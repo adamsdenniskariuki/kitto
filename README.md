@@ -28,7 +28,7 @@ flowchart LR
 | 3    | customers, booking                                                            | ✅      |
 | 4    | billing, mpesa                                                                | ✅      |
 | 5    | inventory, orders                                                             | ✅      |
-| 6    | reports, module generator                                                     | planned |
+| 6    | reports, module generator                                                     | ✅      |
 | 7    | demo app, docs and tutorial                                                   | planned |
 
 ## Layout
@@ -64,13 +64,24 @@ See [docs/SETUP.md](docs/SETUP.md) for subdomain mode, e2e tests, hosted Supabas
 
 Common scripts:
 
-| Script                             | What it does                                                            |
-| ---------------------------------- | ----------------------------------------------------------------------- |
-| `pnpm db:sync`                     | Copy each package's `supabase/{migrations,tests}` into root `supabase/` |
-| `pnpm db:reset`                    | Rebuild the local database from migrations                              |
-| `pnpm db:lint`                     | `supabase db lint`                                                      |
-| `pnpm db:types`                    | Regenerate `packages/core/src/database.types.ts`                        |
-| `pnpm typecheck` / `lint` / `test` | Across all packages via Turborepo                                       |
+| Script                             | What it does                                                              |
+| ---------------------------------- | ------------------------------------------------------------------------- |
+| `pnpm db:sync`                     | Copy each package's `supabase/{migrations,tests}` into root `supabase/`   |
+| `pnpm db:reset`                    | Rebuild the local database from migrations                                |
+| `pnpm db:lint`                     | `supabase db lint`                                                        |
+| `pnpm db:types`                    | Regenerate `packages/core/src/database.types.ts`                          |
+| `pnpm typecheck` / `lint` / `test` | Across all packages via Turborepo                                         |
+| `pnpm create-kitto-module <name>`  | Scaffold a new module (see below)                                         |
+| `pnpm generator:check`             | Generate a scratch module and prove it passes every check, then remove it |
+
+## Create a module
+
+```bash
+pnpm create-kitto-module vehicles --fields "make:text! model:text! year:int price:money notes:longtext" --app apps/demo
+pnpm install && pnpm db:sync && pnpm db:reset && pnpm db:types   # or add --apply
+```
+
+This writes `packages/vehicles` the same shape as `@kitto/customers`: a migration (tenant-scoped table, RLS, `vehicles.view/create/edit/delete` permissions, audit, column grants), a pgTAP test, Zod schemas, typed data access, server actions, list/new/detail pages and a Vitest file. With `--app` it also adds the routes, nav entry, `transpilePackages` entry, dependency and a Playwright spec. Use `--dry-run` to see the file list first. See [tools/create-kitto-module](tools/create-kitto-module/README.md).
 
 ## Key ideas
 

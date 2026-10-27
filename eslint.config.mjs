@@ -15,7 +15,6 @@ export default tseslint.config(
       '**/test-results/**',
       '**/next-env.d.ts',
       '**/database.types.ts',
-      'tools/create-kitto-module/templates/**',
     ],
   },
   js.configs.recommended,

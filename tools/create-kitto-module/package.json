@@ -1,0 +1,17 @@
+{
+  "name": "@kitto/create-kitto-module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Scaffolds a Kitto module: table + RLS + permissions + audit, Zod forms, pages and tests.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.4"
+  }
+}

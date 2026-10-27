@@ -6,6 +6,7 @@ import { BOOKING_PERMISSIONS, bookingNav } from '@kitto/booking';
 import { customersNav } from '@kitto/customers';
 import { INVENTORY_PERMISSIONS, inventoryNav, LowStockCard } from '@kitto/inventory';
 import { ORDER_PERMISSIONS, ordersNav } from '@kitto/orders';
+import { reportsNav, ReportsKpiCard } from '@kitto/reports';
 import { Card, Money, PageHeader, Stat } from '@kitto/ui';
 
 export default async function TenantHome({ params }: PageProps<'/t/[tenant]'>) {
@@ -32,6 +33,7 @@ export default async function TenantHome({ params }: PageProps<'/t/[tenant]'>) {
       ? [{ href: ctx.path('/invoices/new'), label: 'New invoice' }]
       : []),
     ...billingNav(ctx),
+    ...reportsNav(ctx),
   ];
   return (
     <>
@@ -66,7 +68,8 @@ export default async function TenantHome({ params }: PageProps<'/t/[tenant]'>) {
           </ul>
         </Card>
       )}
-      <div className="mt-6">
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <ReportsKpiCard ctx={ctx} />
         <LowStockCard ctx={ctx} />
       </div>
       {sections.length > 0 && (

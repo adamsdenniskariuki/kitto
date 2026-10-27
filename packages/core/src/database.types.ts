@@ -1761,6 +1761,72 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      report_booking_utilisation: {
+        Args: { p_from: string; p_tenant_id: string; p_to: string };
+        Returns: {
+          available_minutes: number;
+          booked_minutes: number;
+          reservations: number;
+          resource_id: string;
+          resource_name: string;
+        }[];
+      };
+      report_new_customers: {
+        Args: { p_from: string; p_tenant_id: string; p_to: string };
+        Returns: {
+          customers: number;
+          day: string;
+        }[];
+      };
+      report_payment_methods: {
+        Args: { p_from: string; p_tenant_id: string; p_to: string };
+        Returns: {
+          amount_minor: number;
+          method: string;
+          payments: number;
+        }[];
+      };
+      report_receivables_aging: {
+        Args: { p_as_of?: string; p_tenant_id: string };
+        Returns: {
+          bucket: string;
+          invoices: number;
+          outstanding_minor: number;
+        }[];
+      };
+      report_reservation_status: {
+        Args: { p_from: string; p_tenant_id: string; p_to: string };
+        Returns: {
+          reservations: number;
+          status: string;
+        }[];
+      };
+      report_revenue: {
+        Args: { p_bucket?: string; p_from: string; p_tenant_id: string; p_to: string };
+        Returns: {
+          bucket: string;
+          invoiced_minor: number;
+          paid_minor: number;
+        }[];
+      };
+      report_stock_summary: {
+        Args: { p_tenant_id: string };
+        Returns: {
+          items: number;
+          low_items: number;
+          stock_value_minor: number;
+          uncosted_items: number;
+        }[];
+      };
+      report_top_items: {
+        Args: { p_from: string; p_limit?: number; p_tenant_id: string; p_to: string };
+        Returns: {
+          item_id: string;
+          name: string;
+          quantity: number;
+          revenue_minor: number;
+        }[];
+      };
       reservation_price: {
         Args: { p_during: unknown; p_rate_minor: number; p_rate_unit: string; p_timezone: string };
         Returns: number;
