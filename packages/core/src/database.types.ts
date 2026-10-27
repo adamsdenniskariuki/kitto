@@ -46,6 +46,99 @@ export type Database = {
         };
         Relationships: [];
       };
+      customer_notes: {
+        Row: {
+          author_email: string | null;
+          author_id: string | null;
+          body: string;
+          created_at: string;
+          customer_id: string;
+          id: string;
+          tenant_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          author_email?: string | null;
+          author_id?: string | null;
+          body: string;
+          created_at?: string;
+          customer_id: string;
+          id?: string;
+          tenant_id: string;
+        };
+        Update: {
+          author_email?: string | null;
+          author_id?: string | null;
+          body?: string;
+          created_at?: string;
+          customer_id?: string;
+          id?: string;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'customer_notes_tenant_id_customer_id_fkey';
+            columns: ['tenant_id', 'customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
+      customers: {
+        Row: {
+          archived_at: string | null;
+          attributes: NonNullable<Json>;
+          created_at: string;
+          created_by: string | null;
+          email: string | null;
+          id: string;
+          name: string;
+          notes: string;
+          phone: string | null;
+          tags: string[];
+          tenant_id: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          archived_at?: string | null;
+          attributes?: NonNullable<Json>;
+          created_at?: string;
+          created_by?: string | null;
+          email?: string | null;
+          id?: string;
+          name: string;
+          notes?: string;
+          phone?: string | null;
+          tags?: string[];
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          archived_at?: string | null;
+          attributes?: NonNullable<Json>;
+          created_at?: string;
+          created_by?: string | null;
+          email?: string | null;
+          id?: string;
+          name?: string;
+          notes?: string;
+          phone?: string | null;
+          tags?: string[];
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'customers_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       invitations: {
         Row: {
           accepted_at: string | null;
@@ -116,6 +209,234 @@ export type Database = {
           module?: string;
         };
         Relationships: [];
+      };
+      reservation_series: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          every: string;
+          id: string;
+          occurrences: number;
+          tenant_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          every: string;
+          id?: string;
+          occurrences: number;
+          tenant_id: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          every?: string;
+          id?: string;
+          occurrences?: number;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reservation_series_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      reservations: {
+        Row: {
+          cancelled_at: string | null;
+          checked_in_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          customer_id: string | null;
+          during: unknown;
+          ends_at: string | null;
+          guests: number;
+          id: string;
+          notes: string;
+          price_minor: number;
+          resource_id: string;
+          series_id: string | null;
+          source: string;
+          starts_at: string | null;
+          status: string;
+          tenant_id: string;
+          title: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          cancelled_at?: string | null;
+          checked_in_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id?: string | null;
+          during: unknown;
+          ends_at?: never;
+          guests?: number;
+          id?: string;
+          notes?: string;
+          price_minor?: number;
+          resource_id: string;
+          series_id?: string | null;
+          source?: string;
+          starts_at?: never;
+          status?: string;
+          tenant_id: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Update: {
+          cancelled_at?: string | null;
+          checked_in_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id?: string | null;
+          during?: unknown;
+          ends_at?: never;
+          guests?: number;
+          id?: string;
+          notes?: string;
+          price_minor?: number;
+          resource_id?: string;
+          series_id?: string | null;
+          source?: string;
+          starts_at?: never;
+          status?: string;
+          tenant_id?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reservations_tenant_id_customer_id_fkey';
+            columns: ['tenant_id', 'customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'reservations_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reservations_tenant_id_resource_id_fkey';
+            columns: ['tenant_id', 'resource_id'];
+            isOneToOne: false;
+            referencedRelation: 'resources';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'reservations_tenant_id_series_id_fkey';
+            columns: ['tenant_id', 'series_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservation_series';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
+      resource_hours: {
+        Row: {
+          closes: string;
+          id: string;
+          opens: string;
+          resource_id: string;
+          tenant_id: string;
+          weekday: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          closes: string;
+          id?: string;
+          opens: string;
+          resource_id: string;
+          tenant_id: string;
+          weekday: number;
+        };
+        Update: {
+          closes?: string;
+          id?: string;
+          opens?: string;
+          resource_id?: string;
+          tenant_id?: string;
+          weekday?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'resource_hours_tenant_id_resource_id_fkey';
+            columns: ['tenant_id', 'resource_id'];
+            isOneToOne: false;
+            referencedRelation: 'resources';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
+      resources: {
+        Row: {
+          active: boolean;
+          attributes: NonNullable<Json>;
+          capacity: number;
+          created_at: string;
+          description: string;
+          id: string;
+          kind: string;
+          name: string;
+          position: number;
+          rate_minor: number;
+          rate_unit: string;
+          tenant_id: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          active?: boolean;
+          attributes?: NonNullable<Json>;
+          capacity?: number;
+          created_at?: string;
+          description?: string;
+          id?: string;
+          kind?: string;
+          name: string;
+          position?: number;
+          rate_minor?: number;
+          rate_unit?: string;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          attributes?: NonNullable<Json>;
+          capacity?: number;
+          created_at?: string;
+          description?: string;
+          id?: string;
+          kind?: string;
+          name?: string;
+          position?: number;
+          rate_minor?: number;
+          rate_unit?: string;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'resources_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       role_permissions: {
         Row: {
@@ -291,6 +612,129 @@ export type Database = {
     };
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
+      available_resources: {
+        Args: {
+          p_ends_local: string;
+          p_guests?: number;
+          p_kind?: string;
+          p_starts_local: string;
+          p_tenant_id: string;
+        };
+        Returns: {
+          active: boolean;
+          attributes: NonNullable<Json>;
+          capacity: number;
+          created_at: string;
+          description: string;
+          id: string;
+          kind: string;
+          name: string;
+          position: number;
+          rate_minor: number;
+          rate_unit: string;
+          tenant_id: string;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'resources';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      available_slots: {
+        Args: {
+          p_day: string;
+          p_duration_minutes: number;
+          p_resource_id: string;
+          p_step_minutes?: number;
+        };
+        Returns: {
+          ends_at: string;
+          starts_at: string;
+        }[];
+      };
+      create_recurring_reservations: {
+        Args: {
+          p_customer_id?: string;
+          p_duration_minutes: number;
+          p_every: string;
+          p_guests?: number;
+          p_notes?: string;
+          p_occurrences: number;
+          p_resource_id: string;
+          p_starts_local: string;
+          p_title?: string;
+        };
+        Returns: {
+          cancelled_at: string | null;
+          checked_in_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          customer_id: string | null;
+          during: unknown;
+          ends_at: string | null;
+          guests: number;
+          id: string;
+          notes: string;
+          price_minor: number;
+          resource_id: string;
+          series_id: string | null;
+          source: string;
+          starts_at: string | null;
+          status: string;
+          tenant_id: string;
+          title: string;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'reservations';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      create_reservation: {
+        Args: {
+          p_customer_id?: string;
+          p_ends_local: string;
+          p_guests?: number;
+          p_notes?: string;
+          p_resource_id: string;
+          p_starts_local: string;
+          p_status?: string;
+          p_title?: string;
+        };
+        Returns: {
+          cancelled_at: string | null;
+          checked_in_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          customer_id: string | null;
+          during: unknown;
+          ends_at: string | null;
+          guests: number;
+          id: string;
+          notes: string;
+          price_minor: number;
+          resource_id: string;
+          series_id: string | null;
+          source: string;
+          starts_at: string | null;
+          status: string;
+          tenant_id: string;
+          title: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'reservations';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       create_tenant: { Args: { p_name: string; p_slug: string }; Returns: string };
       has_permission: { Args: { p_permission: string; p_tenant_id: string }; Returns: boolean };
       my_permissions: { Args: { p_tenant_id: string }; Returns: string[] };
@@ -305,6 +749,10 @@ export type Database = {
         }[];
       };
       normalize_phone: { Args: { p_phone: string }; Returns: string };
+      reservation_price: {
+        Args: { p_during: unknown; p_rate_minor: number; p_rate_unit: string; p_timezone: string };
+        Returns: number;
+      };
     };
     Enums: {
       [_ in never]: never;

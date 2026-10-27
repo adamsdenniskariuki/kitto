@@ -4,6 +4,8 @@ import { cookies } from 'next/headers';
 import { SignOutButton, TenantSwitcher } from '@kitto/auth';
 import { getTenantContext } from '@kitto/auth/server';
 import { ADMIN_PERMISSIONS } from '@kitto/admin';
+import { bookingNav } from '@kitto/booking';
+import { customersNav } from '@kitto/customers';
 import { AppShell, ThemeStyle } from '@kitto/ui';
 import { ThemeToggle } from '@kitto/ui/client';
 import { NavLinks, type NavItem } from '@kitto/ui/next';
@@ -22,7 +24,11 @@ export default async function TenantLayout({
   const scheme = parseColorScheme((await cookies()).get(COLOR_SCHEME_COOKIE)?.value);
   const current = ctx.tenants.find((t) => t.slug === ctx.tenant.slug)!;
 
-  const nav: NavItem[] = [{ href: ctx.path('/'), label: 'Home', exact: true }];
+  const nav: NavItem[] = [
+    { href: ctx.path('/'), label: 'Home', exact: true },
+    ...bookingNav(ctx),
+    ...customersNav(ctx),
+  ];
   if (ADMIN_PERMISSIONS.some((p) => ctx.can(p)))
     nav.push({ href: ctx.path('/admin'), label: 'Admin' });
 

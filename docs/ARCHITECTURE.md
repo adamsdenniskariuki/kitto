@@ -243,3 +243,90 @@ flowchart LR
 ```
 
 SQL raises descriptive errors (for example, "A workspace needs at least one active owner"), and the admin maps them to short codes and friendly messages. No database text is shown to users.
+
+## Business modules
+
+Each module is a package with the same shape, so a new one (or one made by the generator) is easy to find your way around:
+
+```
+packages/<module>/
+  supabase/migrations/   ordered, append-only SQL (tables, RLS, audit, permissions)
+  supabase/tests/        pgTAP
+  src/permissions.ts     permission keys, mirrored from SQL
+  src/schemas.ts         Zod schemas for every form
+  src/data.ts            typed data access (takes a Supabase client)
+  src/shared.ts          notice/error codes and nav entries
+  src/actions.ts         'use server' actions (exported as ./actions)
+  src/pages.tsx          server-component pages that apps mount
+  src/*.test.ts          Vitest
+```
+
+```mermaid
+flowchart BT
+  core["@kitto/core<br/>types, permissions, forms, format"]
+  ui["@kitto/ui"] --> core
+  auth["@kitto/auth"] --> core & ui
+  admin["@kitto/admin"] --> auth
+  customers["@kitto/customers"] --> auth
+  booking["@kitto/booking"] --> customers
+  app["apps/demo"] --> admin & customers & booking
+```
+
+### Cross-module pages
+
+Modules never import each other's pages in a cycle. Instead, a page accepts `sections`, and the app composes them. For example, the customer page shows that customer's reservations without `customers` depending on `booking`:
+
+```tsx
+// app/t/[tenant]/customers/[id]/page.tsx
+<CustomerDetailPage
+  ctx={ctx}
+  id={id}
+  searchParams={sp}
+  sections={<CustomerReservations ctx={ctx} customerId={id} />}
+/>
+```
+
+### Customers (`@kitto/customers`)
+
+Customer records with contact details, tags (stored sorted and lower-case), notes, and an archive flag. People with history are archived, not deleted. Search matches name, email or phone digits. Permissions: `customers.view`, `customers.create`, `customers.edit`, `customers.delete` (only customers with no history).
+
+### Booking (`@kitto/booking`)
+
+Generic **resources** (a room, a table, a court, a test-drive car) with a capacity, a rate (`per booking | hour | day | night`) and optional weekly opening hours. **Reservations** belong to one resource and optionally one customer.
+
+**No double-booking** is enforced by Postgres, not by application code:
+
+```sql
+constraint reservations_no_overlap exclude using gist (
+  resource_id with =,
+  during      with &&            -- tstzrange '[)': 10:00-11:00 and 11:00-12:00 don't clash
+) where (private.reservation_blocks(status))   -- cancelled / no-show free the slot
+```
+
+Two people pressing "Book" at the same moment can't both win: the second insert fails with `23P01`, which the UI shows as "That time is already taken". Times are entered in the tenant's time zone and stored as UTC ranges.
+
+```mermaid
+stateDiagram-v2
+  [*] --> tentative
+  [*] --> confirmed
+  tentative --> confirmed
+  tentative --> cancelled
+  confirmed --> checked_in
+  confirmed --> cancelled
+  confirmed --> no_show
+  checked_in --> completed
+  completed --> [*]
+  cancelled --> [*]
+  no_show --> [*]
+```
+
+The status machine is enforced by a trigger; `STATUS_TRANSITIONS` in TypeScript only decides which buttons to show. Other SQL pieces:
+
+| Function                                  | Technique                                                                                         |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `available_slots(resource, day, minutes)` | `generate_series` over opening hours, minus blocking reservations, ranges contained with `<@`     |
+| `available_resources(kind, from, to)`     | anti-join on overlapping ranges                                                                   |
+| `create_reservation(...)`                 | converts local time to UTC, checks capacity and active resource, price via trigger                |
+| `create_recurring_reservations(...)`      | recursive CTE produces the occurrences; one insert, so a single clash rolls back the whole series |
+
+Prices are stored as `price_minor` (integer cents) computed from the resource's rate when the reservation is made, so later rate changes don't rewrite history. Pages subscribe to Supabase Realtime (`LiveRefresh`) so the agenda updates when a colleague books.

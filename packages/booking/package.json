@@ -1,0 +1,39 @@
+{
+  "name": "@kitto/booking",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kitto booking module: bookable resources, opening hours, availability and reservations without double-booking.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./actions": "./src/actions.ts",
+    "./client": "./src/live.tsx"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@kitto/auth": "workspace:*",
+    "@kitto/core": "workspace:*",
+    "@kitto/customers": "workspace:*",
+    "@kitto/ui": "workspace:*",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.6"
+  },
+  "peerDependencies": {
+    "next": "^16.4.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "next": "^16.4.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.4"
+  }
+}

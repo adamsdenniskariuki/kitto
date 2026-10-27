@@ -47,7 +47,7 @@ test('public pages are accessible', async ({ page }, testInfo) => {
 
 test('workspace and admin pages are accessible', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'the sweep sets its own viewport sizes');
-  test.setTimeout(180_000);
+  test.setTimeout(420_000);
   const home = await createWorkspace(
     page,
     uniqueEmail('a11y'),
@@ -63,6 +63,35 @@ test('workspace and admin pages are accessible', async ({ page }, testInfo) => {
   await page.getByRole('link', { name: /Manager/ }).click();
   const managerRoles = page.url().replace(/^https?:\/\/[^/]+/, '');
 
+  // A customer, a resource with hours and a reservation, so module pages have content.
+  await page.goto(`${home}/customers/new`);
+  await page.getByLabel('Name').fill('Achieng Otieno');
+  await page.getByLabel('Tags').fill('vip');
+  await page.getByRole('button', { name: 'Add customer' }).click();
+  await expect(page.getByText('Customer added.')).toBeVisible();
+  const customer = page
+    .url()
+    .replace(/^https?:\/\/[^/]+/, '')
+    .split('?')[0]!;
+  await page.goto(`${home}/bookings/resources`);
+  await page.getByLabel('Name').fill('Room 1');
+  await page.getByRole('button', { name: 'Add resource' }).click();
+  await expect(page.getByText('Resource added.')).toBeVisible();
+  const resource = page
+    .url()
+    .replace(/^https?:\/\/[^/]+/, '')
+    .split('?')[0]!;
+  await page.getByRole('button', { name: 'Add hours' }).click();
+  await expect(page.getByText('Opening hours added.')).toBeVisible();
+  await page.goto(`${home}/bookings/new?resource=${resource.split('/').pop()}&day=2030-01-14`);
+  await page.getByLabel('Customer').selectOption({ label: 'Achieng Otieno' });
+  await page.getByRole('button', { name: 'Book', exact: true }).click();
+  await expect(page.getByText('Reservation made.')).toBeVisible();
+  const reservation = page
+    .url()
+    .replace(/^https?:\/\/[^/]+/, '')
+    .split('?')[0]!;
+
   await sweep(page, [
     '/onboarding',
     home,
@@ -72,5 +101,13 @@ test('workspace and admin pages are accessible', async ({ page }, testInfo) => {
     managerRoles,
     `${home}/admin/settings`,
     `${home}/admin/audit`,
+    `${home}/customers`,
+    `${home}/customers/new`,
+    customer,
+    `${home}/bookings?day=2030-01-14`,
+    `${home}/bookings/new?day=2030-01-14&resource=${resource.split('/').pop()}`,
+    reservation,
+    `${home}/bookings/resources`,
+    resource,
   ]);
 });

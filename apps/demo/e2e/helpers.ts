@@ -39,11 +39,12 @@ export function uniqueSlug(prefix: string) {
 /** Request a magic link from /login and follow it. */
 export async function signIn(page: Page, email: string, next = '/') {
   const sentAt = new Date(Date.now() - 1000);
-  await page.goto(`/login?next=${encodeURIComponent(next)}`);
   const sent = page.getByText('Check your inbox');
   const limited = page.getByText('Too many requests');
   // Auth allows one email per address per second (config.toml max_frequency).
+  // Reload each attempt so a stale "Too many requests" can't be mistaken for the new result.
   for (let attempt = 0; ; attempt++) {
+    await page.goto(`/login?next=${encodeURIComponent(next)}`);
     await page.getByLabel('Email').fill(email);
     await page.getByRole('button', { name: 'Email me a sign-in link' }).click();
     await expect(sent.or(limited)).toBeVisible();
