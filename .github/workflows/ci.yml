@@ -37,6 +37,10 @@ jobs:
       - name: supabase/ is in sync with module SQL
         run: pnpm db:sync:check
 
+      # Linux picks outbound ports from 32768-60999, which includes Supabase's
+      # 553xx ports; move that range so image pulls can't take them first.
+      - name: Keep Supabase ports free
+        run: sudo sysctl -w net.ipv4.ip_local_port_range="61000 65000"
       - name: Start Postgres and apply migrations
         run: pnpm exec supabase db start
 
@@ -83,6 +87,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      # Linux picks outbound ports from 32768-60999, which includes Supabase's
+      # 553xx ports; move that range so image pulls can't take them first.
+      - name: Keep Supabase ports free
+        run: sudo sysctl -w net.ipv4.ip_local_port_range="61000 65000"
       # Auth (GoTrue), REST, Realtime and Mailpit are needed; skip the rest.
       - name: Start Supabase
         run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
