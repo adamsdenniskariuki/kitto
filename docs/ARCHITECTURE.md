@@ -1,6 +1,105 @@
 # Kitto architecture
 
-This document explains how Kitto is put together. It grows with each module.
+This document explains how Kitto is put together: the system, the database core, and what each module does. For _how_ the notable SQL and TypeScript techniques work, see [LEARNING.md](../LEARNING.md); to build an app on top, follow [TUTORIAL.md](TUTORIAL.md); to run and deploy it, see [SETUP.md](SETUP.md).
+
+## System overview
+
+```mermaid
+flowchart LR
+  user(["Browser / phone"])
+  subgraph vercel["Vercel"]
+    proxy["proxy.ts<br/>createKittoProxy()<br/>session refresh · tenant rewrite"]
+    next["Next.js app (apps/*)<br/>server components · server actions<br/>route handlers (auth, PDF, M-Pesa callback)"]
+  end
+  subgraph supabase["Supabase"]
+    authsvc["Auth<br/>magic links (token_hash)"]
+    rest["PostgREST<br/>(supabase-js)"]
+    pg[("Postgres<br/>RLS · triggers · functions<br/>every business rule")]
+    rt["Realtime<br/>postgres_changes (RLS applied)"]
+  end
+  daraja["Safaricom Daraja<br/>STK push"]
+  mail["SMTP / Mailpit"]
+
+  user -- "HTTPS (path or subdomain URL)" --> proxy --> next
+  next -- "user's JWT" --> rest --> pg
+  next --> authsvc --> mail -.-> user
+  pg --> rt -. "websocket: refresh" .-> user
+  next -- "OAuth + STK push" --> daraja
+  daraja -- "callback /api/mpesa/callback/&lt;token&gt;" --> next
+```
+
+- **Postgres is the source of truth for rules.** Tenancy, permissions, double-booking, numbering, stock and payment rules live in SQL (constraints, RLS, triggers, functions), so every client, including a future mobile app or integration, gets the same guarantees.
+- **Next.js is thin.** Pages are server components that call typed data functions with the signed-in user's Supabase client; mutations are server actions. There is no service-role key in the app: every query runs as the user, under RLS.
+- **Realtime only triggers refreshes.** A client island subscribes to changes and calls `router.refresh()`; data still flows through the server components.
+- **Daraja** is called from the server; its callback carries an unguessable per-request token and is handled by one `[anon]` SQL function.
+
+### Request lifecycle
+
+A form post from a phone, end to end (here: adding a customer in path mode):
+
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant P as proxy.ts
+  participant A as Server action (createCustomerAction)
+  participant C as getTenantContext (React cache)
+  participant DB as Postgres (RLS)
+  participant R as Page (server component)
+  U->>P: POST /t/acme/customers/new (form, works without JS)
+  P->>P: refresh Supabase session cookies; signed out → /login?next=…
+  P->>A: request
+  A->>C: tenant slug from hidden field
+  C->>DB: my_tenants(), tenant by slug, my_permissions()
+  DB-->>C: membership + permission set (404 if not a member)
+  A->>A: requirePermission('customers.create'), Zod parse FormData
+  A->>DB: insert into customers (column grants + RLS + triggers + audit)
+  alt ok
+    DB-->>A: row
+    A-->>U: 303 → /t/acme/customers/<id>?notice=created
+  else error (SQLSTATE)
+    DB-->>A: 23505 / 42501 / 22023 …
+    A-->>U: 303 → /t/acme/customers/new?error=exists
+  end
+  U->>R: GET (follows redirect)
+  R->>DB: select (RLS filters by customers.view)
+  R-->>U: HTML with Flash message
+```
+
+### Data model at a glance
+
+Key tables only, across all modules. Every table also has `tenant_id`, and every arrow between tenant tables is a composite `(tenant_id, …_id)` foreign key.
+
+```mermaid
+erDiagram
+  tenants ||--o{ tenant_members : "staff"
+  tenants ||--o{ roles : ""
+  roles ||--o{ role_permissions : ""
+  tenants ||--o{ customers : ""
+  customers ||--o{ customer_notes : "timeline"
+  tenants ||--o{ resources : "rooms, bays, tables"
+  resources ||--o{ resource_hours : "opening hours"
+  resources ||--o{ reservations : ""
+  customers |o--o{ reservations : ""
+  reservation_series |o--o{ reservations : "repeats"
+  customers |o--o{ invoices : ""
+  invoices ||--|{ invoice_lines : ""
+  invoices ||--o{ payments : "append-only"
+  invoices ||--o{ mpesa_requests : "STK push"
+  payments |o--o| mpesa_requests : "settled by"
+  tenants ||--o{ items : ""
+  suppliers |o--o{ purchases : ""
+  purchases ||--|{ purchase_lines : ""
+  items ||--o{ stock_movements : "append-only ledger"
+  stock_locations ||--o{ stock_movements : ""
+  items ||--o{ stock_levels : "derived"
+  customers |o--o{ orders : ""
+  reservations |o--o{ orders : "charged to"
+  orders ||--|{ order_lines : ""
+  items |o--o{ order_lines : ""
+  invoices |o--o{ orders : "invoice_id"
+```
+
+Two links are deliberately generic rather than foreign keys, so modules don't depend on each other: an invoice bills any `(source_type, source_id)` (a reservation, an order), and a stock movement records its cause the same way (a purchase, an order). Reports read everything through SQL functions and own no tables.
 
 ## Monorepo
 
@@ -112,7 +211,7 @@ sequenceDiagram
   DB-->>P: rows filtered by has_permission(tenant, 'orders.view')
 ```
 
-Resolution only picks a tenant; it grants nothing. A user who edits the URL to another tenant's slug gets zero rows back, because every policy checks membership and permissions. Both modes share one route tree (`app/t/[tenant]/…`): in subdomain mode the proxy rewrites `acme.example.com/x` to `/t/acme/x`, and links are built with `tenantHref()` so they work in either mode.
+Resolution only picks a tenant; it grants nothing. A user who edits the URL to another tenant's slug gets zero rows back, because every policy checks membership and permissions. Both modes share one route tree (`app/t/[tenant]/…`): in subdomain mode the proxy rewrites `acme.example.com/x` to `/t/acme/x`, and links are built with `ctx.path()` (inside a tenant) or `tenantHref()` (across hosts) so they work in either mode. Subdomain mode needs a wildcard domain (`*.example.com`) on Vercel; see [SETUP.md](SETUP.md#tenant-urls-path-or-subdomain).
 
 ### Roles and permissions
 
@@ -311,7 +410,7 @@ constraint reservations_no_overlap exclude using gist (
 ) where (private.reservation_blocks(status))   -- cancelled / no-show free the slot
 ```
 
-Two people pressing "Book" at the same moment can't both win: the second insert fails with `23P01`, which the UI shows as "That time is already taken". Times are entered in the tenant's time zone and stored as UTC ranges.
+Two people pressing "Book" at the same moment can't both win: the second insert fails with `23P01`, which the UI shows as "That time is already booked. Pick another time or resource.". Times are entered in the tenant's time zone and stored as UTC ranges.
 
 ```mermaid
 stateDiagram-v2

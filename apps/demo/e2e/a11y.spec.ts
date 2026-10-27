@@ -45,6 +45,17 @@ test('public pages are accessible', async ({ page }, testInfo) => {
   await sweep(page, ['/', '/login', '/login?error=link', '/does-not-exist']);
 });
 
+test('a new workspace, before and after sample data, is accessible', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'the sweep sets its own viewport sizes');
+  test.setTimeout(300_000);
+  const home = await createWorkspace(page, uniqueEmail('a11y-new'), 'Fresh Inn', uniqueSlug('new'));
+  await sweep(page, [home]);
+  await page.goto(home);
+  await page.getByRole('button', { name: 'Load sample data' }).click();
+  await expect(page.getByText('Sample data loaded.')).toBeVisible();
+  await sweep(page, [home, `${home}/bookings`, `${home}/inventory/low`, `${home}/reports`]);
+});
+
 test('workspace and admin pages are accessible', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'the sweep sets its own viewport sizes');
   test.setTimeout(900_000);
