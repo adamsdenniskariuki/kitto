@@ -9,10 +9,14 @@ Prerequisites: Node 22, pnpm 10, and Docker (Supabase runs locally in containers
 ```bash
 pnpm install
 pnpm db:start                         # local Supabase on ports 553xx
-pnpm exec supabase status             # prints API URL and anon key
-cp .env.example apps/demo/.env.local  # then paste the anon key into it
+pnpm exec supabase status             # prints API URL, anon key and service_role key
+cp .env.example apps/demo/.env.local  # then paste both keys into it
 pnpm --filter @kitto/demo dev         # http://localhost:3000
 ```
+
+On Windows PowerShell, use `Copy-Item .env.example apps/demo/.env.local` for the copy. The first `pnpm db:start` downloads the Supabase images, which takes a few minutes. To start only what Kitto uses, run `pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor` (CI does this).
+
+Then open http://localhost:3000, sign in, create a workspace and press **Load sample data** on its home page to fill it with a small guest house (see [apps/demo/README.md](../apps/demo/README.md#sample-data)).
 
 - **Emails are not sent locally.** Supabase catches them in Mailpit at http://127.0.0.1:55324. Sign in with any address, then open Mailpit and click the link.
 - Kitto's local ports (`55321` API, `55322` DB, `55324` Mailpit) are offset from the Supabase defaults, so Kitto can run next to other Supabase projects.
@@ -23,9 +27,11 @@ pnpm --filter @kitto/demo dev         # http://localhost:3000
 | Command                                   | What it runs                                                      |
 | ----------------------------------------- | ----------------------------------------------------------------- |
 | `pnpm db:test`                            | pgTAP: RLS, tenant isolation, permissions, audit                  |
+| `pnpm db:lint`                            | `plpgsql_check` over every SQL function                           |
 | `pnpm test`                               | Vitest unit tests in every package                                |
 | `pnpm --filter @kitto/demo build`         | Production build (needed before the e2e run below)                |
 | `CI=1 pnpm --filter @kitto/demo test:e2e` | Playwright on phone and desktop, plus the axe accessibility sweep |
+| `pnpm generator:check`                    | Scaffolds a throwaway module and runs every check above on it     |
 
 Without `CI=1`, Playwright starts `next dev`. That works but is slow on the first compile of each page.
 
@@ -114,4 +120,13 @@ For **production**, apply for M-Pesa Express (Go Live) on the portal, then set `
 
 ## 6. GitHub Actions
 
-CI needs **no secrets** (M-Pesa runs with `MPESA_ENV=mock`). It starts an ephemeral local Supabase stack, applies every migration from scratch, runs pgTAP, unit tests and the build, and then runs Playwright and axe against the demo app.
+CI ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) needs **no secrets**. M-Pesa runs with `MPESA_ENV=mock`, and each job starts its own throwaway local Supabase stack and reads the keys from `supabase status`. It has four jobs:
+
+| Job       | What it checks                                                                                                                 |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| check     | `format:check`, `lint`, `typecheck`, unit tests, `build`                                                                       |
+| db        | migration names, `db:sync:check`, migrations from scratch, `db:lint`, pgTAP, `db:types:check`                                  |
+| e2e       | builds the demo, then runs Playwright on phone and desktop with the axe sweep                                                  |
+| generator | `generator:check`: scaffolds a module into the demo, runs typecheck, lint, unit tests, pgTAP and its e2e spec, then removes it |
+
+Vercel deploys separately through its GitHub integration, so CI never needs your Supabase or Daraja keys.

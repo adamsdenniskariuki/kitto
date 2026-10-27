@@ -21,15 +21,33 @@ flowchart LR
 
 ## Status
 
-| Step | Scope                                                                         | State   |
-| ---- | ----------------------------------------------------------------------------- | ------- |
-| 1    | Monorepo, CI, database core (tenants, members, roles/permissions, RLS, audit) | ✅      |
-| 2    | auth, ui kit, admin portal shell                                              | ✅      |
-| 3    | customers, booking                                                            | ✅      |
-| 4    | billing, mpesa                                                                | ✅      |
-| 5    | inventory, orders                                                             | ✅      |
-| 6    | reports, module generator                                                     | ✅      |
-| 7    | demo app, docs and tutorial                                                   | planned |
+| Step | Scope                                                                         | State |
+| ---- | ----------------------------------------------------------------------------- | ----- |
+| 1    | Monorepo, CI, database core (tenants, members, roles/permissions, RLS, audit) | ✅    |
+| 2    | auth, ui kit, admin portal shell                                              | ✅    |
+| 3    | customers, booking                                                            | ✅    |
+| 4    | billing, mpesa                                                                | ✅    |
+| 5    | inventory, orders                                                             | ✅    |
+| 6    | reports, module generator                                                     | ✅    |
+| 7    | demo app, docs and tutorial                                                   | ✅    |
+
+## Modules
+
+| Package            | What it gives you                                                                                                              | Permissions                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `@kitto/core`      | tenants, members, roles as data, `has_permission` + RLS helpers, generic audit trigger, money/date formatting, typed DB client | `tenant.manage`, `members.manage`, `roles.manage`, `audit.view` |
+| `@kitto/auth`      | magic-link sign-in, proxy (session + path/subdomain tenant resolution), `getTenantContext`, `runTenantAction`, invitations     | –                                                               |
+| `@kitto/ui`        | accessible (WCAG AA) mobile-first components, themes + dark mode, forms, data tables, flash messages, per-tenant currency      | –                                                               |
+| `@kitto/admin`     | admin portal pages: staff and invitations, roles editor, workspace settings (theme, currency, time zone), audit log            | (uses the core permissions)                                     |
+| `@kitto/customers` | customers with search, notes timeline, archive; `sections` slots for other modules                                             | `customers.view/create/edit/delete`                             |
+| `@kitto/booking`   | resources (rooms, bays, tables) with hours and rates, double-booking-proof reservations, slots, recurring series, agenda       | `booking.view/create/manage/configure`                          |
+| `@kitto/billing`   | quotes and invoices with gapless numbers, tax, payments, derived status, PDFs, billing any source (reservation, order)         | `billing.view/create/issue/void`, `payments.record`             |
+| `@kitto/mpesa`     | Daraja STK push for invoices, idempotent callbacks with hashed per-request tokens, mock mode for dev and CI                    | `mpesa.request`                                                 |
+| `@kitto/inventory` | items, suppliers, locations, purchases, append-only stock ledger, no negative stock under concurrency, low-stock alerts        | `inventory.view/manage/purchase/adjust/transfer`                |
+| `@kitto/orders`    | restaurant/bar/counter orders that take stock when sent, charge to a reservation, and become paid with their invoice           | `orders.view/create/serve/cancel/bill`                          |
+| `@kitto/reports`   | revenue, payment methods, receivables aging, utilisation, top items, stock, new customers; server-rendered SVG charts          | `reports.view` + each module's `.view`                          |
+
+Every app gets `core`, `auth`, `ui` and `admin`; the business modules are opt-in, and modules never import each other sideways except where the dependency is real (orders uses inventory; billing, booking and orders use customers; mpesa uses billing). The app composes them through `sections` props and generic sources. See the [dependency graph](docs/ARCHITECTURE.md#business-modules).
 
 ## Layout
 
@@ -43,7 +61,7 @@ packages/
   ...              one package per module (see docs/ARCHITECTURE.md)
 tools/             create-kitto-module generator
 apps/demo          example app using every module
-docs/              architecture, setup, tutorial
+docs/              architecture, setup, tutorial (LEARNING.md at the root)
 scripts/           sync-sql, gen-types
 ```
 
@@ -59,6 +77,8 @@ pnpm test            # unit tests
 cp .env.example apps/demo/.env.local   # add the anon key from `pnpm exec supabase status`
 pnpm --filter @kitto/demo dev          # http://localhost:3000; sign-in emails land in Mailpit (:55324)
 ```
+
+Sign in with any email, create a workspace, then press **Load sample data** on the workspace home to get a small hotel with rooms, bookings, stock, orders and a part-paid invoice. See [apps/demo/README.md](apps/demo/README.md).
 
 See [docs/SETUP.md](docs/SETUP.md) for subdomain mode, e2e tests, hosted Supabase, Vercel and M-Pesa (Daraja). Locally, `MPESA_ENV=mock` (the `.env.example` default) makes M-Pesa requests settle themselves a second later without touching Safaricom.
 
@@ -90,4 +110,24 @@ This writes `packages/vehicles` the same shape as `@kitto/customers`: a migratio
 - **Everything important is audited** by one generic trigger that records who, what, when, and the before and after values.
 - **Modules are opt-in.** Each package owns ordered, append-only migrations, typed data access, Zod schemas, UI and tests.
 
-Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and diagrams.
+## Testing
+
+| Layer                | Tool                              | What it proves                                                                                                     |
+| -------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Database             | pgTAP (`pnpm db:test`)            | RLS and tenant isolation, the permission matrix per role, constraints, triggers, numbering, concurrency (`dblink`) |
+| Database lint        | `pnpm db:lint`                    | plpgsql functions compile and reference real objects                                                               |
+| Unit                 | Vitest (`pnpm test`)              | Zod schemas, money/tax maths, chart scales, tenant resolution, redirects, forms                                    |
+| End to end           | Playwright (`apps/demo/e2e`)      | real sign-in through Mailpit, every module's main flow, M-Pesa mock, on a phone and a desktop viewport             |
+| Accessibility        | `@axe-core/playwright`            | an axe sweep of every page (WCAG 2.1 AA) in light and dark mode                                                    |
+| Generator            | `pnpm generator:check`            | a freshly generated module passes all of the above                                                                 |
+| Generated SQL, types | `db:sync:check`, `db:types:check` | the root `supabase/` folder and `database.types.ts` match the packages                                             |
+
+CI (GitHub Actions) runs these as the `check`, `db`, `e2e` and `generator` jobs.
+
+## Documentation
+
+- [docs/SETUP.md](docs/SETUP.md): local development, path or subdomain tenant URLs, Supabase cloud, Vercel, M-Pesa (Daraja), environment variables.
+- [docs/TUTORIAL.md](docs/TUTORIAL.md): build "Kitto Garage", a small dealership and workshop, in an hour; plus how a hotel app maps onto the modules.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): system and request diagrams, data model, tenancy, roles, every module's design.
+- [LEARNING.md](LEARNING.md): the notable SQL and TypeScript techniques used, with real snippets.
+- [apps/demo/README.md](apps/demo/README.md): the demo app and how modules are mounted.
