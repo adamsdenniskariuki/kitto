@@ -100,19 +100,19 @@ The URL names the tenant, and the database decides whether the user may see it. 
 ```mermaid
 sequenceDiagram
   participant B as Browser
-  participant M as Next.js middleware
+  participant M as Next.js proxy (@kitto/auth/proxy)
   participant P as Page (server)
   participant DB as Postgres (RLS)
   B->>M: GET acme.example.com/orders
-  M->>M: resolveTenant() -> slug "acme"
-  M->>P: rewrite to /[tenant]/orders
+  M->>M: refresh session cookies, resolveTenant() -> slug "acme"
+  M->>P: rewrite to /t/acme/orders
   P->>DB: select * from tenants where slug = 'acme'
   DB-->>P: row only if the user is a member (RLS)
   P->>DB: select * from orders where tenant_id = …
   DB-->>P: rows filtered by has_permission(tenant, 'orders.view')
 ```
 
-Resolution only picks a tenant; it grants nothing. A user who edits the URL to another tenant's slug gets zero rows back, because every policy checks membership and permissions.
+Resolution only picks a tenant; it grants nothing. A user who edits the URL to another tenant's slug gets zero rows back, because every policy checks membership and permissions. Both modes share one route tree (`app/t/[tenant]/…`): in subdomain mode the proxy rewrites `acme.example.com/x` to `/t/acme/x`, and links are built with `tenantHref()` so they work in either mode.
 
 ### Roles and permissions
 
@@ -161,3 +161,85 @@ One generic trigger serves every table. Enable it with `select private.enable_au
 - Function `EXECUTE` is revoked from `public`/`anon`/`authenticated` and granted explicitly. Functions that anonymous users may call must have a comment starting with `[anon]`; a pgTAP test enforces this.
 - Column-level grants limit what clients can change (e.g. a member can't edit `tenants.slug` or `roles.is_system`) on top of RLS.
 - Schema guard tests check that every public table has RLS, every tenant table has a policy and a `tenant_id` index, and `anon` can read nothing.
+
+## Sign-in and tenant switching (`@kitto/auth`)
+
+Passwordless magic links, generalised from nextto. The email link carries a `token_hash` (not a PKCE code), so it works even when opened in a different browser or on a phone.
+
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant L as /login (LoginForm)
+  participant SA as signInAction (server)
+  participant GT as Supabase Auth
+  participant C as /auth/confirm (createConfirmRoute)
+  participant H as homeHref()
+  U->>L: email address
+  L->>SA: POST (Zod-validated)
+  SA->>GT: signInWithOtp(email, emailRedirectTo = next)
+  GT-->>U: email: {{SiteURL}}/auth/confirm?token_hash=…&type=email&next=…
+  U->>C: click link
+  C->>GT: verifyOtp(token_hash) -> session cookies
+  C->>C: safeNextPath(next): same site or a tenant subdomain only
+  C-->>U: 303 to next, or "/"
+  U->>H: GET /
+  H-->>U: last-opened tenant (cookie) / only tenant / /onboarding
+```
+
+| Import               | What you get                                                                                                                           |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `@kitto/auth/proxy`  | `createKittoProxy()`: refreshes the session, rewrites subdomains, guards `/t/`, `/onboarding`, `/invite/`                              |
+| `@kitto/auth/routes` | `createConfirmRoute()`, `createSignOutRoute()` for `app/auth/*/route.ts`                                                               |
+| `@kitto/auth/server` | `getUser`, `requireUser`, `getTenantContext(slug)` (tenant, membership, permission set), `requirePermission`, `homeHref`, `tenantHref` |
+| `@kitto/auth/client` | `LoginForm`, `OnboardingForm`, `AcceptInvitationForm`                                                                                  |
+| `@kitto/auth`        | `TenantSwitcher`, `SignOutButton`, config and redirect helpers                                                                         |
+
+`getTenantContext()` is wrapped in React `cache()`, so a layout and its page share one lookup per request. It calls `notFound()` when the user isn't an active member, so another tenant's URL looks exactly like a missing page. `requirePermission(ctx, 'members.manage')` does the same for pages a role may not open. Both are conveniences; RLS is still the real check.
+
+**Invitations:** an admin calls `invite_member()` (SQL checks `members.manage` and that the inviter holds every permission of the role), then `sendInvitationEmail()` mails a magic link whose `next` is `/invite/<token>`. The invitee signs in and `accept_invitation()` adds the membership if the token is valid, unexpired and addressed to their email.
+
+## UI kit (`@kitto/ui`)
+
+- Tailwind v4 with CSS variables (`--color-brand`, `--color-surface`, …). Themes (`kitto`, `ocean`, `forest`, `sunset`, `plum`) are variable sets; `<ThemeStyle theme={tenant.theme}>` injects the tenant's palette, so each tenant can look different with no rebuild.
+- Dark mode: `data-theme="light|dark"` on `<html>` from a cookie (no flash), `ThemeToggle` cycles system/light/dark.
+- Server components by default (`DataTable`, `Card`, `Stat`, `Money`, `DateTime`, `Alert`, form fields). Interactive pieces live in `@kitto/ui/client` (`SubmitButton` with pending state, `ConfirmSubmit`, `ThemeToggle`, `NavLinks`).
+- `Money` and `DateTime` format with the tenant's `currency`, `locale` and `time_zone`, so `KES 1,500.00` vs `$1,500.00` is a tenant setting.
+- Accessibility is tested, not assumed: every page in the demo is swept with axe (WCAG 2.1 A/AA) at 360/768/1440 px in light and dark mode, and e2e tests fail if anything causes sideways scrolling on a phone.
+
+## Admin portal (`@kitto/admin`)
+
+Ready-made server-component pages that an app mounts with one-line route files:
+
+```tsx
+// app/t/[tenant]/admin/staff/page.tsx
+export default async function Page({ params, searchParams }: PageProps<'/t/[tenant]/admin/staff'>) {
+  return (
+    <StaffPage
+      ctx={await getTenantContext((await params).tenant)}
+      searchParams={await searchParams}
+    />
+  );
+}
+```
+
+| Page           | Permission       | What it does                                                             |
+| -------------- | ---------------- | ------------------------------------------------------------------------ |
+| `AdminHome`    | any admin key    | Section cards for what this role can manage                              |
+| `StaffPage`    | `members.manage` | Members (change role, disable, remove), pending invitations, invite form |
+| `RolesPage`    | `roles.manage`   | Custom roles and a permission matrix grouped by module                   |
+| `SettingsPage` | `tenant.manage`  | Business name, currency, locale, time zone, theme                        |
+| `AuditPage`    | `audit.view`     | Filterable audit log with before/after diffs, keyset-paginated           |
+
+Every mutation follows the same pattern, which new modules copy:
+
+```mermaid
+flowchart LR
+  F["form action={serverAction}<br/>(works without JS)"] --> A[server action]
+  A --> Z[Zod parse]
+  Z --> P["getTenantContext + requirePermission<br/>(fast, friendly 404)"]
+  P --> S["supabase call<br/>(RLS + SQL guards are the real check)"]
+  S -- ok --> R1["revalidatePath + redirect ?notice=saved"]
+  S -- error --> R2["map SQL error to code<br/>redirect ?error=last_owner"]
+```
+
+SQL raises descriptive errors (for example, "A workspace needs at least one active owner"), and the admin maps them to short codes and friendly messages. No database text is shown to users.

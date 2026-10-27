@@ -31,7 +31,7 @@ port = 55323
 [auth]
 enabled = true
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["http://localhost:3000/**", "http://127.0.0.1:3000/**", "http://*.localhost:3000/**"]
+additional_redirect_urls = ["http://localhost:3000/**", "http://127.0.0.1:3000/**", "http://*.localhost:3000/**", "http://lvh.me:3000/**", "http://*.lvh.me:3000/**"]
 jwt_expiry = 3600
 enable_signup = true
 
@@ -45,7 +45,18 @@ double_confirm_changes = true
 enable_confirmations = false
 max_frequency = "1s"
 
-# Local email viewer (Mailpit) at http://127.0.0.1:54324
+# Both templates use token_hash links handled by /auth/confirm (see @kitto/auth).
+# Hosted projects: paste supabase/templates/magic_link.html into
+# Authentication > Emails for "Magic Link" and "Confirm signup" (docs/SETUP.md).
+[auth.email.template.magic_link]
+subject = "Your sign-in link"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.confirmation]
+subject = "Confirm your email"
+content_path = "./supabase/templates/magic_link.html"
+
+# Local email viewer (Mailpit) at http://127.0.0.1:55324
 [local_smtp]
 enabled = true
 port = 55324

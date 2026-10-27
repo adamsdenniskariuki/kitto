@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:24px;background:#f7f7f8;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#14151a">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px">
+      <tr>
+        <td>
+          <p style="margin:0 0 24px;font-size:22px;font-weight:800;letter-spacing:-0.02em">Kitto</p>
+          <p style="margin:0 0 24px;font-size:16px;line-height:1.5">Tap the button below to sign in. The link works once and expires in an hour.</p>
+          <p style="margin:0 0 24px">
+            <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next={{ .RedirectTo }}" style="display:inline-block;background:#4338ca;color:#ffffff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:999px">Sign in</a>
+          </p>
+          <p style="margin:0;color:#5a5d68;font-size:13px">Or enter this code: <strong>{{ .Token }}</strong><br />If you didn't ask for this, you can ignore this email.</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

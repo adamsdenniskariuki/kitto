@@ -35,7 +35,7 @@ reset role;
 select results_eq(
   $$select action, changed, old_data ->> 'name', new_data ->> 'name', actor_id, actor_email
     from public.audit_log
-    where table_name = 'tenants' and action = 'update'$$,
+    where table_name = 'tenants' and action = 'update' and tenant_id = current_setting('tests.t')::uuid$$,
   $$values ('update'::text, array['currency', 'name']::text[], 'Dealer'::text, 'Dealer Ltd'::text,
             'aaaaaaaa-0000-0000-0000-000000000001'::uuid, 'owner@kitto.test'::text)$$,
   'updates record who, which columns, and before/after values'
@@ -46,13 +46,15 @@ set local role authenticated;
 update public.tenants set name = 'Dealer Ltd' where slug = 'dealer';
 reset role;
 select is(
-  (select count(*)::int from public.audit_log where table_name = 'tenants' and action = 'update'),
+  (select count(*)::int from public.audit_log where table_name = 'tenants' and action = 'update'
+     and tenant_id = current_setting('tests.t')::uuid),
   1, 'no-op updates are not logged'
 );
 
 -- Members are audited with the user id as record id.
 select is(
-  (select record_id from public.audit_log where table_name = 'tenant_members' and action = 'insert'),
+  (select record_id from public.audit_log where table_name = 'tenant_members' and action = 'insert'
+     and tenant_id = current_setting('tests.t')::uuid),
   'aaaaaaaa-0000-0000-0000-000000000001', 'membership changes are audited by user id'
 );
 

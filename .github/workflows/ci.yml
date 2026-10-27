@@ -37,6 +37,10 @@ jobs:
       - name: supabase/ is in sync with module SQL
         run: pnpm db:sync:check
 
+      # Linux picks outbound ports from 32768-60999, which includes Supabase's
+      # 553xx ports; move that range so image pulls can't take them first.
+      - name: Keep Supabase ports free
+        run: sudo sysctl -w net.ipv4.ip_local_port_range="61000 65000"
       - name: Start Postgres and apply migrations
         run: pnpm exec supabase db start
 
@@ -69,3 +73,57 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+  e2e:
+    name: E2E (Playwright + axe against local Supabase)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Linux picks outbound ports from 32768-60999, which includes Supabase's
+      # 553xx ports; move that range so image pulls can't take them first.
+      - name: Keep Supabase ports free
+        run: sudo sysctl -w net.ipv4.ip_local_port_range="61000 65000"
+      # Auth (GoTrue), REST, Realtime and Mailpit are needed; skip the rest.
+      - name: Start Supabase
+        run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+
+      - name: Point the demo app at local Supabase
+        shell: bash
+        run: |
+          eval "$(pnpm exec supabase status -o env 2>/dev/null)"
+          {
+            echo "NEXT_PUBLIC_SITE_URL=http://localhost:3000"
+            echo "NEXT_PUBLIC_TENANT_MODE=path"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "MAILPIT_URL=${MAILPIT_URL:-http://127.0.0.1:55324}"
+            echo "MPESA_ENV=mock"
+          } >> "$GITHUB_ENV"
+
+      - run: pnpm --filter @kitto/demo build
+      - run: pnpm --filter @kitto/demo exec playwright install --with-deps chromium
+      - name: Playwright
+        run: pnpm --filter @kitto/demo test:e2e
+        env:
+          CI: 'true'
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            apps/demo/playwright-report/
+            apps/demo/test-results/
+          retention-days: 7
+
+      - name: Stop Supabase
+        if: always()
+        run: pnpm exec supabase stop --no-backup

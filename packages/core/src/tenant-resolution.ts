@@ -74,6 +74,18 @@ export function resolveTenant(
   return { slug: normalized, pathname: `/${rest.join('/')}` };
 }
 
+/**
+ * Link to a page of the tenant the user is already on. In path mode that is
+ * "/t/acme/bookings"; in subdomain mode the host already names the tenant, so
+ * it is just "/bookings". Use tenantUrl() to link across tenants.
+ */
+export function tenantPath(config: TenantResolutionConfig, slug: string, path = '/'): string {
+  const p = path.startsWith('/') ? path : `/${path}`;
+  if (config.mode === 'subdomain') return p;
+  const prefix = (config.pathPrefix ?? '/t').replace(/\/+$/, '');
+  return `${prefix}/${slug}${p === '/' ? '' : p}`;
+}
+
 /** Build an absolute-path or absolute URL for a page inside a tenant. */
 export function tenantUrl(
   config: TenantResolutionConfig,

@@ -3,4 +3,5 @@ export * from './permissions';
 export * from './format';
 export * from './schemas';
 export * from './data';
+export * from './forms';
 export type { Database, Json, Tables, TablesInsert, TablesUpdate } from './database.types';
