@@ -24,7 +24,7 @@ flowchart LR
 | Step | Scope                                                                         | State   |
 | ---- | ----------------------------------------------------------------------------- | ------- |
 | 1    | Monorepo, CI, database core (tenants, members, roles/permissions, RLS, audit) | ✅      |
-| 2    | auth, ui kit, admin portal shell                                              | planned |
+| 2    | auth, ui kit, admin portal shell                                              | ✅      |
 | 3    | customers, booking                                                            | planned |
 | 4    | billing, mpesa                                                                | planned |
 | 5    | inventory, orders                                                             | planned |
@@ -37,6 +37,9 @@ flowchart LR
 supabase/          generated: every module's migrations + pgTAP tests (pnpm db:sync)
 packages/
   core             tenants, members, roles & permissions, audit log, formatting
+  auth             magic-link sign-in, proxy (tenant resolution), invitations, tenant switcher
+  ui               themed, accessible components; dark mode; forms; data tables
+  admin            admin portal pages: staff, roles, settings, audit log
   ...              one package per module (see docs/ARCHITECTURE.md)
 tools/             create-kitto-module generator
 apps/demo          example app using every module
@@ -53,7 +56,11 @@ pnpm install
 pnpm db:start        # local Supabase on ports 553xx (avoids clashing with other projects)
 pnpm db:test         # pgTAP: RLS, tenant isolation, permissions, audit
 pnpm test            # unit tests
+cp .env.example apps/demo/.env.local   # add the anon key from `pnpm exec supabase status`
+pnpm --filter @kitto/demo dev          # http://localhost:3000; sign-in emails land in Mailpit (:55324)
 ```
+
+See [docs/SETUP.md](docs/SETUP.md) for subdomain mode, e2e tests, hosted Supabase and Vercel.
 
 Common scripts:
 
