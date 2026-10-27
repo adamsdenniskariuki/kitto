@@ -222,5 +222,7 @@ test('workspace and admin pages are accessible', async ({ page }, testInfo) => {
     `${home}/orders`,
     `${home}/orders/new`,
     order,
+    `${home}/reports`,
+    `${home}/reports?from=2030-01-01&to=2030-01-31`,
   ]);
 });

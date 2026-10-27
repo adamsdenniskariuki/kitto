@@ -23,7 +23,9 @@
     "db:types": "node scripts/gen-types.mjs",
     "db:types:check": "node scripts/gen-types.mjs --check",
     "db:sync": "node scripts/sync-sql.mjs",
-    "db:sync:check": "node scripts/sync-sql.mjs --check"
+    "db:sync:check": "node scripts/sync-sql.mjs --check",
+    "create-kitto-module": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/create-kitto-module/src/cli.ts",
+    "generator:check": "node --experimental-strip-types --no-warnings=ExperimentalWarning tools/create-kitto-module/src/check.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

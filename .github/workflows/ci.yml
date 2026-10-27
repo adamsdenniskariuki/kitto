@@ -128,3 +128,59 @@ jobs:
       - name: Stop Supabase
         if: always()
         run: pnpm exec supabase stop --no-backup
+
+  generator:
+    name: Module generator (scaffold, then typecheck, lint, unit, pgTAP, e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Keep Supabase ports free
+        run: sudo sysctl -w net.ipv4.ip_local_port_range="61000 65000"
+      - name: Start Supabase
+        run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+
+      - name: Point the demo app at local Supabase
+        shell: bash
+        run: |
+          eval "$(pnpm exec supabase status -o env 2>/dev/null)"
+          {
+            echo "NEXT_PUBLIC_SITE_URL=http://localhost:3000"
+            echo "NEXT_PUBLIC_TENANT_MODE=path"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "MAILPIT_URL=${MAILPIT_URL:-http://127.0.0.1:55324}"
+            echo "MPESA_ENV=mock"
+            echo "MPESA_CALLBACK_BASE_URL=http://localhost:3000"
+          } >> "$GITHUB_ENV"
+
+      - run: pnpm --filter @kitto/demo exec playwright install --with-deps chromium
+
+      # Scaffolds a throwaway module wired into apps/demo, applies its SQL,
+      # regenerates types, then runs format, lint, typecheck, unit tests,
+      # pgTAP, db lint, the demo build and the generated Playwright spec.
+      # The scratch files never leave this runner.
+      - name: Generate and verify a scratch module
+        run: pnpm generator:check --no-db-cleanup
+        env:
+          CI: 'true'
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: generator-playwright-report
+          path: |
+            apps/demo/playwright-report/
+            apps/demo/test-results/
+          retention-days: 7
+
+      - name: Stop Supabase
+        if: always()
+        run: pnpm exec supabase stop --no-backup

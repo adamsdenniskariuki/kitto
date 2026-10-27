@@ -273,10 +273,12 @@ flowchart BT
   mpesa["@kitto/mpesa"] --> billing
   inventory["@kitto/inventory"] --> auth
   orders["@kitto/orders"] --> customers & inventory
-  app["apps/demo"] --> admin & customers & booking & billing & mpesa & inventory & orders
+  reports["@kitto/reports"] --> auth
+  gen["your module<br/>(create-kitto-module)"] --> auth
+  app["apps/demo"] --> admin & customers & booking & billing & mpesa & inventory & orders & reports
 ```
 
-TypeScript dependencies only. In SQL, migrations run in timestamp order, so a later module may reference an earlier one's tables (orders has a foreign key to booking's `reservations` and triggers on billing's `invoices`) without its package importing them; the app composes the pages.
+TypeScript dependencies only (`@kitto/reports` reads other modules' tables through SQL functions, so it imports none of them). In SQL, migrations run in timestamp order, so a later module may reference an earlier one's tables (orders has a foreign key to booking's `reservations` and triggers on billing's `invoices`) without its package importing them; the app composes the pages.
 
 ### Cross-module pages
 
@@ -520,3 +522,47 @@ The package imports only `customers` and `inventory`; it never imports booking o
 Pages: `OrdersPage` (status filter, live refresh), `NewOrderPage` (`?reservation=`, `?customer=`), `OrderDetailPage` (lines, details, next step; `sections`, `invoiceHref`, `reservationHref`).
 
 Permissions: `orders.view`, `orders.create` (open orders and edit lines), `orders.serve` (send and fulfil), `orders.cancel`, `orders.bill` (mark paid). Defaults: manager gets all; front desk gets all; waiter and sales create, serve and bill; storekeeper and viewer can view.
+
+### Reports (`@kitto/reports`)
+
+KPIs and charts for a date range, rendered entirely on the server.
+
+**SQL.** One migration per reported module (`…0100` guard and permission, `…0200` billing, `…0300` booking, `…0400` orders, `…0500` inventory, `…0600` customers), so an app that leaves a module out drops that file and the matching section. The reports SQL depends on the modules it reports on; nothing depends on reports.
+
+| Function                                            | Needs            | Returns                                                                              |
+| --------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------ |
+| `report_revenue(tenant, from, to, 'day' \| 'week')` | `billing.view`   | invoiced (by issue date) and collected (by local payment day) per bucket             |
+| `report_payment_methods(tenant, from, to)`          | `billing.view`   | count and amount per method (cash, card, M-Pesa, …)                                  |
+| `report_receivables_aging(tenant, as_of)`           | `billing.view`   | outstanding balance in current / 1-30 / 31-60 / 61-90 / 90+ day buckets              |
+| `report_booking_utilisation(tenant, from, to)`      | `booking.view`   | reservations, booked minutes and available minutes (from opening hours) per resource |
+| `report_reservation_status(tenant, from, to)`       | `booking.view`   | reservation counts by status                                                         |
+| `report_top_items(tenant, from, to, limit)`         | `orders.view`    | best sellers by quantity and amount                                                  |
+| `report_stock_summary(tenant)`                      | `inventory.view` | stock value at cost and low-stock count                                              |
+| `report_new_customers(tenant, from, to)`            | `customers.view` | new customers per day                                                                |
+
+- **Permissions.** Every function calls `private.report_guard(tenant, '<module>.view', from, to)` (SECURITY DEFINER, `search_path = ''`), which raises 42501 unless the caller holds `reports.view` **and** the module's view permission, validates the period (forwards, at most 366 days) and returns the tenant's time zone. The report functions themselves are SECURITY INVOKER, so RLS still applies: a report can never count a row the user couldn't select. `reports.view` defaults to manager and viewer (owners hold everything).
+- **Time zones.** A period is whole local days: `private.report_period(from, to, tz)` gives `[from 00:00, to+1 00:00)` in the tenant's zone, and timestamps are bucketed with `at time zone tz`.
+- **Gap filling.** Series `left join` onto `generate_series(from, to, '1 day')` (or ISO weeks from `date_trunc('week', from)`), so every day appears with zeros and charts never skip one.
+- pgTAP covers each function's maths, cross-tenant isolation (another tenant's owner gets 42501, never zeros) and the permission matrix.
+
+**Charts.** `BarChart`, `LineChart`, `DonutChart`, `StackedBar` and `BarList` are server components that return plain `<svg>`: no client JavaScript and no chart library. Scaling lives in `math.ts` (nice ticks, linear scales, line paths, donut arcs), unit-tested in Vitest. Each chart is a `<figure>` with an `<svg role="img">` whose `<title>` and `<desc>` summarise it (e.g. "Collected KES 9,000 over 7 days"), plus a visually-hidden `<table>` with every value for screen readers. Colours come from theme CSS variables, so charts follow light and dark mode, and money is formatted with the tenant's locale and currency.
+
+**Pages.** `ReportsPage` reads `?from=&to=` from a GET form (default: the last 30 days in the tenant's time zone; invalid or over-long input is adjusted with a notice) and renders the sections the app passes, or all of them. Each section (`RevenueSection`, `PaymentMethodsSection`, `AgingSection`, `BookingSection`, `TopItemsSection`, `StockSection`, `NewCustomersSection`) checks its module permission and renders nothing without it, so an app includes only the sections for its modules. `ReportsKpiCard` puts this month's revenue on a home page.
+
+## Module generator (`tools/create-kitto-module`)
+
+`pnpm create-kitto-module <name> [--fields "…"] [--app apps/demo] [--dry-run] [--apply]` scaffolds a module that follows the customers conventions exactly, so it passes the same CI as hand-written modules.
+
+```mermaid
+flowchart LR
+  name["name + --fields<br/>(validated, reserved words refused)"] --> mig["migration<br/>table (tenant_id, unique (tenant_id, id))<br/>timestamps, checks, column grants"]
+  mig --> rls["RLS + permissions<br/>register_permission(name.view/create/edit/delete)<br/>permitted_tenant_ids policies, audit trigger"]
+  rls --> schemas["Zod schemas<br/>+ typed data.ts"]
+  schemas --> pages["actions.ts + pages.tsx<br/>list / new / detail (edit, delete)"]
+  pages --> tests["tests<br/>Vitest · pgTAP · Playwright"]
+  tests --> app["--app wiring<br/>routes, nav, transpilePackages, dependency"]
+```
+
+The migration timestamp is the current UTC time (bumped past the newest existing migration), so it sorts after every module block. Field types are `text`, `longtext`, `int`, `numeric`, `money` (stored as `<name>_minor` bigint in the tenant currency), `bool` and `date`; `!` makes a field required, and one required text field becomes the title. The generator refuses names that already exist as a package, table or route.
+
+**CI proves it.** The `generator` job runs `pnpm generator:check`: it generates a scratch module with every field type into `packages/ci-widgets` wired into `apps/demo`, installs, syncs SQL, resets the database, regenerates types, then runs Prettier, ESLint, both typechecks, the generated unit tests, all pgTAP tests (including the generated one), `db lint`, the demo build and the generated Playwright spec. Afterwards it removes every generated file and restores the patched ones; it runs in its own job, so no other job sees the scratch module or its database.

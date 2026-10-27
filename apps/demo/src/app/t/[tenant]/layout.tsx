@@ -9,6 +9,7 @@ import { bookingNav } from '@kitto/booking';
 import { customersNav } from '@kitto/customers';
 import { inventoryNav } from '@kitto/inventory';
 import { ordersNav } from '@kitto/orders';
+import { reportsNav } from '@kitto/reports';
 import { AppShell, ThemeStyle } from '@kitto/ui';
 import { ThemeToggle } from '@kitto/ui/client';
 import { NavLinks, type NavItem } from '@kitto/ui/next';
@@ -34,6 +35,7 @@ export default async function TenantLayout({
     ...inventoryNav(ctx),
     ...customersNav(ctx),
     ...billingNav(ctx),
+    ...reportsNav(ctx),
   ];
   if (ADMIN_PERMISSIONS.some((p) => ctx.can(p)))
     nav.push({ href: ctx.path('/admin'), label: 'Admin' });
