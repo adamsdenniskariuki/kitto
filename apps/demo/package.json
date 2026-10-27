@@ -14,9 +14,11 @@
   "dependencies": {
     "@kitto/admin": "workspace:*",
     "@kitto/auth": "workspace:*",
+    "@kitto/billing": "workspace:*",
     "@kitto/booking": "workspace:*",
     "@kitto/core": "workspace:*",
     "@kitto/customers": "workspace:*",
+    "@kitto/mpesa": "workspace:*",
     "@kitto/ui": "workspace:*",
     "next": "^16.4.0",
     "react": "^19.3.1",

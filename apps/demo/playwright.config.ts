@@ -31,5 +31,10 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // M-Pesa never touches Safaricom in tests: mock mode calls back to this server.
+    env: {
+      MPESA_ENV: 'mock',
+      MPESA_CALLBACK_BASE_URL: `http://localhost:${PORT}`,
+    },
   },
 });

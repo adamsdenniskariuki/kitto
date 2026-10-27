@@ -501,11 +501,18 @@ export async function NewReservationPage({ ctx, searchParams }: TenantPageProps)
 
 // --------------------------------------------------- reservation detail
 
+export interface ReservationDetailPageProps extends TenantPageProps {
+  reservationId: string;
+  /** Extra sections from other modules (e.g. billing). Each gets the loaded reservation. */
+  sections?: ((reservation: ReservationRow) => ReactNode)[];
+}
+
 export async function ReservationDetailPage({
   ctx,
   searchParams,
   reservationId,
-}: TenantPageProps & { reservationId: string }) {
+  sections = [],
+}: ReservationDetailPageProps) {
   requirePermission(ctx, P.view);
   if (!UUID.test(reservationId)) notFound();
   const r = await getReservation(ctx.db, reservationId);
@@ -630,6 +637,10 @@ export async function ReservationDetailPage({
               {canManage && <SubmitButton pendingLabel="Saving…">Save changes</SubmitButton>}
             </form>
           </Card>
+
+          {sections.map((render, i) => (
+            <div key={i}>{render(r)}</div>
+          ))}
         </div>
 
         {canManage && next.length > 0 && (
