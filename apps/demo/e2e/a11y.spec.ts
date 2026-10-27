@@ -47,7 +47,7 @@ test('public pages are accessible', async ({ page }, testInfo) => {
 
 test('workspace and admin pages are accessible', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'the sweep sets its own viewport sizes');
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
   const home = await createWorkspace(
     page,
     uniqueEmail('a11y'),
@@ -121,6 +121,68 @@ test('workspace and admin pages are accessible', async ({ page }, testInfo) => {
     .replace(/^https?:\/\/[^/]+/, '')
     .split('?')[0]!;
 
+  // Inventory: a second location, a supplier, an item low on stock and a received purchase.
+  await page.goto(`${home}/inventory/locations`);
+  await page.getByLabel('Name', { exact: true }).fill('Bar');
+  await page.getByRole('button', { name: 'Add location' }).click();
+  await expect(page.getByText('Location added.')).toBeVisible();
+  await page.goto(`${home}/inventory/suppliers`);
+  await page.getByLabel('Name', { exact: true }).fill('Kenya Breweries');
+  await page.getByRole('button', { name: 'Add supplier' }).click();
+  await expect(page.getByText('Supplier added.')).toBeVisible();
+  await page.getByRole('link', { name: 'Kenya Breweries' }).click();
+  const supplier = page
+    .url()
+    .replace(/^https?:\/\/[^/]+/, '')
+    .split('?')[0]!;
+  await page.goto(`${home}/inventory/items/new`);
+  await page.getByLabel('Name').fill('Tusker lager');
+  await page.getByLabel('SKU').fill('TUS-500');
+  await page.getByLabel('Unit').fill('bottle');
+  await page.getByLabel('Price (KES)').fill('300');
+  await page.getByLabel('Reorder level').fill('10');
+  await page.getByRole('button', { name: 'Add item' }).click();
+  await expect(page.getByText('Item added.')).toBeVisible();
+  const item = page
+    .url()
+    .replace(/^https?:\/\/[^/]+/, '')
+    .split('?')[0]!;
+  await page.goto(`${home}/inventory/purchases/new`);
+  await page.getByLabel('Supplier').selectOption({ label: 'Kenya Breweries' });
+  await page.getByRole('button', { name: 'Start purchase' }).click();
+  await expect(page.getByText('Purchase started.', { exact: false })).toBeVisible();
+  await page
+    .getByLabel('Item', { exact: true })
+    .selectOption({ label: 'Tusker lager · TUS-500 (bottle)' });
+  await page.getByLabel('Quantity').fill('6');
+  await page.getByLabel('Unit cost (KES)').fill('170');
+  await page.getByRole('button', { name: 'Add line' }).click();
+  await expect(page.getByText('Line added.')).toBeVisible();
+  await page.getByRole('button', { name: 'Receive into stock' }).click();
+  await expect(page.getByText('Purchase received. Stock is updated.')).toBeVisible();
+  const purchase = page
+    .url()
+    .replace(/^https?:\/\/[^/]+/, '')
+    .split('?')[0]!;
+
+  // An order charged to the reservation, with a line, sent to take stock.
+  await page.goto(`${home}/orders/new?reservation=${reservation.split('/').pop()}`);
+  await page.getByLabel('Table or label').fill('Room service');
+  await page.getByRole('button', { name: 'Open order' }).click();
+  await expect(page.getByText('Order opened.', { exact: false })).toBeVisible();
+  await page
+    .getByLabel('Item', { exact: true })
+    .selectOption({ label: 'Tusker lager · TUS-500 (bottle)' });
+  await page.getByLabel('Quantity').fill('2');
+  await page.getByRole('button', { name: 'Add line' }).click();
+  await expect(page.getByText('Line added.')).toBeVisible();
+  const order = page
+    .url()
+    .replace(/^https?:\/\/[^/]+/, '')
+    .split('?')[0]!;
+  await page.getByRole('button', { name: 'Send order' }).click();
+  await expect(page.getByText('Order sent.', { exact: false })).toBeVisible();
+
   await sweep(page, [
     '/onboarding',
     home,
@@ -144,5 +206,21 @@ test('workspace and admin pages are accessible', async ({ page }, testInfo) => {
     invoice,
     draft,
     `${draft}/edit`,
+    `${home}/inventory`,
+    `${home}/inventory/low`,
+    `${home}/inventory/items/new`,
+    item,
+    `${home}/inventory/suppliers`,
+    supplier,
+    `${home}/inventory/locations`,
+    `${home}/inventory/purchases`,
+    `${home}/inventory/purchases/new`,
+    purchase,
+    `${home}/inventory/movements`,
+    `${home}/inventory/adjust`,
+    `${home}/inventory/transfer`,
+    `${home}/orders`,
+    `${home}/orders/new`,
+    order,
   ]);
 });

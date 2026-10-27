@@ -467,12 +467,22 @@ export function DataTable<T>({
   rowKey,
   empty,
 }: DataTableProps<T>) {
+  const captionId = useId();
   if (rows.length === 0 && empty) return <>{empty}</>;
   // `relative` keeps absolutely positioned sr-only text inside the scroll box, so wide tables never widen the page.
+  // The box is focusable and labelled by the caption so keyboard users can scroll it (WCAG 2.1.1).
   return (
-    <div className="relative overflow-x-auto rounded-2xl border border-line bg-surface">
+    <div
+      role="region"
+      aria-labelledby={captionId}
+      tabIndex={0}
+      className="relative overflow-x-auto rounded-2xl border border-line bg-surface focus-visible:outline-2 focus-visible:outline-brand"
+    >
       <table className="w-full border-collapse text-left text-sm">
-        <caption className={hideCaption ? 'sr-only' : 'px-4 pt-4 text-left font-semibold'}>
+        <caption
+          id={captionId}
+          className={hideCaption ? 'sr-only' : 'px-4 pt-4 text-left font-semibold'}
+        >
           {caption}
         </caption>
         <thead>

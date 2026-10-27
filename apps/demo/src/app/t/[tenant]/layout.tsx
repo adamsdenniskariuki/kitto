@@ -7,6 +7,8 @@ import { ADMIN_PERMISSIONS } from '@kitto/admin';
 import { billingNav } from '@kitto/billing';
 import { bookingNav } from '@kitto/booking';
 import { customersNav } from '@kitto/customers';
+import { inventoryNav } from '@kitto/inventory';
+import { ordersNav } from '@kitto/orders';
 import { AppShell, ThemeStyle } from '@kitto/ui';
 import { ThemeToggle } from '@kitto/ui/client';
 import { NavLinks, type NavItem } from '@kitto/ui/next';
@@ -28,6 +30,8 @@ export default async function TenantLayout({
   const nav: NavItem[] = [
     { href: ctx.path('/'), label: 'Home', exact: true },
     ...bookingNav(ctx),
+    ...ordersNav(ctx),
+    ...inventoryNav(ctx),
     ...customersNav(ctx),
     ...billingNav(ctx),
   ];

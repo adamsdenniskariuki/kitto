@@ -4,6 +4,8 @@ import { ADMIN_SECTIONS } from '@kitto/admin';
 import { BILLING_PERMISSIONS, billingNav } from '@kitto/billing';
 import { BOOKING_PERMISSIONS, bookingNav } from '@kitto/booking';
 import { customersNav } from '@kitto/customers';
+import { INVENTORY_PERMISSIONS, inventoryNav, LowStockCard } from '@kitto/inventory';
+import { ORDER_PERMISSIONS, ordersNav } from '@kitto/orders';
 import { Card, Money, PageHeader, Stat } from '@kitto/ui';
 
 export default async function TenantHome({ params }: PageProps<'/t/[tenant]'>) {
@@ -16,6 +18,14 @@ export default async function TenantHome({ params }: PageProps<'/t/[tenant]'>) {
     ...bookingNav(ctx),
     ...(ctx.can(BOOKING_PERMISSIONS.configure)
       ? [{ href: ctx.path('/bookings/resources'), label: 'Resources' }]
+      : []),
+    ...(ctx.can(ORDER_PERMISSIONS.create)
+      ? [{ href: ctx.path('/orders/new'), label: 'New order' }]
+      : []),
+    ...ordersNav(ctx),
+    ...inventoryNav(ctx),
+    ...(ctx.can(INVENTORY_PERMISSIONS.view)
+      ? [{ href: ctx.path('/inventory/low'), label: 'Low stock' }]
       : []),
     ...customersNav(ctx),
     ...(ctx.can(BILLING_PERMISSIONS.create)
@@ -56,6 +66,9 @@ export default async function TenantHome({ params }: PageProps<'/t/[tenant]'>) {
           </ul>
         </Card>
       )}
+      <div className="mt-6">
+        <LowStockCard ctx={ctx} />
+      </div>
       {sections.length > 0 && (
         <Card className="mt-6">
           <h2 className="mb-3 font-semibold">Admin shortcuts</h2>

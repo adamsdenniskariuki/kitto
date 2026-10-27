@@ -3,6 +3,7 @@ import { getTenantContext } from '@kitto/auth/server';
 import { CustomerInvoices } from '@kitto/billing';
 import { CustomerReservations } from '@kitto/booking';
 import { CustomerDetailPage } from '@kitto/customers';
+import { CustomerOrders } from '@kitto/orders';
 
 export const metadata: Metadata = { title: 'Customer' };
 
@@ -20,6 +21,7 @@ export default async function Page({
       // Other modules add sections here; customers itself doesn't know about bookings.
       sections={[
         (c) => <CustomerReservations ctx={ctx} customerId={c.id} />,
+        (c) => <CustomerOrders ctx={ctx} customerId={c.id} />,
         (c) => <CustomerInvoices ctx={ctx} customerId={c.id} />,
       ]}
     />
