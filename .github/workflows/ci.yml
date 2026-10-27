@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  database:
+    name: Database (migrations, RLS, pgTAP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migration names are timestamped and unique
+        run: |
+          files=$(find packages tools apps -path '*/node_modules' -prune -o -path '*/supabase/migrations/*.sql' -print 2>/dev/null || true)
+          bad=$(echo "$files" | xargs -r -n1 basename | grep -Ev '^[0-9]{14}_[a-z0-9_]+\.sql$' || true)
+          if [ -n "$bad" ]; then echo "Bad migration names:"; echo "$bad"; exit 1; fi
+          dupes=$(echo "$files" | xargs -r -n1 basename | cut -c1-14 | sort | uniq -d)
+          if [ -n "$dupes" ]; then echo "Duplicate migration timestamps: $dupes"; exit 1; fi
+
+      - name: supabase/ is in sync with module SQL
+        run: pnpm db:sync:check
+
+      - name: Start Postgres and apply migrations
+        run: pnpm exec supabase db start
+
+      - name: Re-apply from scratch (migrations are idempotent from empty)
+        run: pnpm exec supabase db reset --local
+
+      - name: Lint schema
+        run: pnpm db:lint
+
+      - name: pgTAP tests
+        run: pnpm db:test
+
+      - name: Generated types are up to date
+        run: pnpm db:types:check
+
+  web:
+    name: Typecheck, lint, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build

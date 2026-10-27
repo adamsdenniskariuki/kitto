@@ -1,0 +1,26 @@
+node_modules/
+.pnpm-store/
+.turbo/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Env files: only .env.example is committed.
+.env
+.env.*
+!.env.example
+
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+
+.DS_Store
+*.log
