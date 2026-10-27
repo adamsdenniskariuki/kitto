@@ -1,0 +1,28 @@
+{
+  "name": "@kitto/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kitto core: tenants, members, roles & permissions, audit log, tenant resolution and formatting.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./database.types": "./src/database.types.ts"
+  },
+  "files": [
+    "src",
+    "supabase"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.4"
+  }
+}

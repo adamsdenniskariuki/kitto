@@ -1,0 +1,48 @@
+{
+  "name": "kitto",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kitto: a reusable multi-tenant business app framework (Next.js + Supabase).",
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:lint": "supabase db lint --level warning --fail-on error",
+    "db:types": "node scripts/gen-types.mjs",
+    "db:types:check": "node scripts/gen-types.mjs --check",
+    "db:sync": "node scripts/sync-sql.mjs",
+    "db:sync:check": "node scripts/sync-sql.mjs --check"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.5",
+    "globals": "^16.4.0",
+    "prettier": "^3.9.10",
+    "supabase": "^2.120.0",
+    "turbo": "^2.11.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^5.0.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "supabase",
+      "unrs-resolver"
+    ]
+  }
+}
