@@ -1,16 +1,19 @@
 import 'server-only';
 import { cache } from 'react';
+import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { createServerClient } from '@supabase/ssr';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import {
   can,
+  commonErrorCode,
   getTenantBySlug,
   myPermissions,
   myTenants,
   tenantPath,
   tenantUrl,
+  withQuery,
   type Database,
   type KittoClient,
   type PermissionSet,
@@ -160,4 +163,66 @@ export async function sendInvitationEmail(email: string, token: string): Promise
     options: { shouldCreateUser: true, emailRedirectTo: `${config.siteUrl}/invite/${token}` },
   });
   if (error) throw new Error(error.status === 429 ? 'rate_limited' : 'email_failed');
+}
+
+/** What a tenant Server Action reports back: a notice or an error code, optionally to another page. */
+export type ActionOutcome =
+  | { notice: string; path?: string; params?: Record<string, string> }
+  | { error: string; path?: string; params?: Record<string, string> };
+
+/**
+ * The shape every module's form actions share:
+ *   1. load the tenant from the hidden `tenant` field (re-checks membership);
+ *   2. 404 unless the user holds `permission` (a friendly early check; RLS and
+ *      the SQL guards are the real enforcement);
+ *   3. run `work`; thrown errors become codes via `classify`;
+ *   4. revalidate and redirect to `page` (or outcome.path) with ?notice= / ?error=.
+ * Forms therefore work without JavaScript. `page` is tenant-relative, e.g. '/customers'.
+ */
+export async function runTenantAction(
+  formData: FormData,
+  permission: string | readonly string[],
+  page: string,
+  work: (ctx: TenantContext) => Promise<ActionOutcome>,
+  classify: (e: unknown) => string = commonErrorCode,
+): Promise<never> {
+  const slug = formData.get('tenant');
+  if (typeof slug !== 'string' || !slug) notFound();
+  const ctx = await getTenantContext(slug);
+  requirePermission(ctx, ...(typeof permission === 'string' ? [permission] : permission));
+  let outcome: ActionOutcome;
+  try {
+    outcome = await work(ctx);
+  } catch (e) {
+    outcome = { error: classify(e) };
+  }
+  const target = ctx.path(outcome.path ?? page);
+  revalidatePath(ctx.path(page));
+  if (outcome.path) revalidatePath(target.split('?')[0]!);
+  redirect(
+    withQuery(target, {
+      ...outcome.params,
+      ...('notice' in outcome ? { notice: outcome.notice } : { error: outcome.error }),
+    }),
+  );
+}
+
+/** A string field from FormData ('' when missing or a file). */
+export function formString(formData: FormData, key: string): string {
+  const v = formData.get(key);
+  return typeof v === 'string' ? v : '';
+}
+
+export type SearchParams = Record<string, string | string[] | undefined>;
+
+/** Props every module page takes: the app's route resolves the tenant and passes it in. */
+export interface TenantPageProps {
+  ctx: TenantContext;
+  searchParams?: SearchParams | undefined;
+}
+
+/** A single query-string value ('' when missing or repeated). */
+export function param(searchParams: SearchParams | undefined, key: string): string {
+  const v = searchParams?.[key];
+  return typeof v === 'string' ? v : '';
 }

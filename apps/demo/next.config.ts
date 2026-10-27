@@ -23,7 +23,14 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Kitto packages ship TypeScript source; Next compiles them.
-  transpilePackages: ['@kitto/core', '@kitto/ui', '@kitto/auth', '@kitto/admin'],
+  transpilePackages: [
+    '@kitto/core',
+    '@kitto/ui',
+    '@kitto/auth',
+    '@kitto/admin',
+    '@kitto/customers',
+    '@kitto/booking',
+  ],
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

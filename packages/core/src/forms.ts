@@ -56,3 +56,59 @@ export function userMessage(
   }
   return fallback;
 }
+
+// ------------------------------------------------------- action outcomes
+
+/**
+ * Error codes shared by every module's Server Actions. Pages receive codes in
+ * the query string (?error=in_use), never raw text, so nobody can craft a link
+ * that shows arbitrary messages. Modules add their own codes alongside these.
+ */
+export const COMMON_ERRORS = {
+  invalid: 'Please check the form and try again.',
+  forbidden: "You don't have permission to do that.",
+  exists: 'That already exists.',
+  in_use: 'That is still used elsewhere, so it cannot be deleted. Archive it instead.',
+  conflict: 'That clashes with something that already exists.',
+  not_found: 'That record no longer exists.',
+  failed: 'Something went wrong. Please try again.',
+} as const;
+export type CommonErrorCode = keyof typeof COMMON_ERRORS;
+
+/** Classify any error thrown by a data-access helper into a CommonErrorCode. */
+export function commonErrorCode(e: unknown): CommonErrorCode {
+  if (!(e instanceof KittoError)) return 'failed';
+  if (e.isPermissionDenied) return 'forbidden';
+  if (e.isConflict) return 'exists';
+  if (e.code === '23503') return 'in_use';
+  if (e.code === '23P01') return 'conflict';
+  if (e.isNotFound) return 'not_found';
+  if (['22023', '23514', '22P02', '22007', '22008'].includes(e.code ?? '')) return 'invalid';
+  return 'failed';
+}
+
+type Params = Record<string, string | string[] | undefined>;
+
+/** Turn ?notice= / ?error= codes into display text; unknown codes are ignored. */
+export function flashMessages(
+  searchParams: Params | undefined,
+  notices: Record<string, string>,
+  errors: Record<string, string> = COMMON_ERRORS,
+): { notice?: string; error?: string } {
+  const n = searchParams?.notice;
+  const e = searchParams?.error;
+  const all: Record<string, string> = { ...COMMON_ERRORS, ...errors };
+  return {
+    ...(typeof n === 'string' && Object.hasOwn(notices, n) ? { notice: notices[n]! } : {}),
+    ...(typeof e === 'string' && Object.hasOwn(all, e) ? { error: all[e]! } : {}),
+  };
+}
+
+/** "path?key=value&...": keeps any query string already on `path`. */
+export function withQuery(path: string, params: Record<string, string | undefined>): string {
+  const [base, existing = ''] = path.split('?', 2) as [string, string?];
+  const qs = new URLSearchParams(existing);
+  for (const [k, v] of Object.entries(params)) if (v !== undefined) qs.set(k, v);
+  const s = qs.toString();
+  return s ? `${base}?${s}` : base;
+}

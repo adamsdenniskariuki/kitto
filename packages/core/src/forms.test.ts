@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { fieldErrors, formValues, userMessage } from './forms';
+import {
+  commonErrorCode,
+  fieldErrors,
+  flashMessages,
+  formValues,
+  userMessage,
+  withQuery,
+} from './forms';
 import { KittoError } from './data';
 import { tenantPath } from './tenant-resolution';
 
@@ -50,6 +57,34 @@ describe('tenantPath', () => {
   it('is host-relative in subdomain mode', () => {
     expect(tenantPath({ mode: 'subdomain', rootDomain: 'example.com' }, 'acme', '/admin')).toBe(
       '/admin',
+    );
+  });
+});
+
+describe('action outcomes', () => {
+  it('commonErrorCode maps SQLSTATEs', () => {
+    expect(commonErrorCode(new KittoError('x', '42501'))).toBe('forbidden');
+    expect(commonErrorCode(new KittoError('x', '23505'))).toBe('exists');
+    expect(commonErrorCode(new KittoError('x', '23503'))).toBe('in_use');
+    expect(commonErrorCode(new KittoError('x', '23P01'))).toBe('conflict');
+    expect(commonErrorCode(new KittoError('x', '22023'))).toBe('invalid');
+    expect(commonErrorCode(new Error('boom'))).toBe('failed');
+  });
+
+  it('flashMessages only shows known codes', () => {
+    const notices = { saved: 'Saved.' };
+    expect(flashMessages({ notice: 'saved' }, notices)).toEqual({ notice: 'Saved.' });
+    expect(flashMessages({ notice: '<script>' }, notices)).toEqual({});
+    expect(flashMessages({ error: 'in_use' }, notices).error).toMatch(/still used/);
+    expect(flashMessages({ error: 'mine' }, notices, { mine: 'Mine.' })).toEqual({
+      error: 'Mine.',
+    });
+  });
+
+  it('withQuery merges parameters', () => {
+    expect(withQuery('/a', { notice: 'saved' })).toBe('/a?notice=saved');
+    expect(withQuery('/a?day=2026-01-01', { error: 'x', skip: undefined })).toBe(
+      '/a?day=2026-01-01&error=x',
     );
   });
 });

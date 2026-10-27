@@ -25,7 +25,7 @@ flowchart LR
 | ---- | ----------------------------------------------------------------------------- | ------- |
 | 1    | Monorepo, CI, database core (tenants, members, roles/permissions, RLS, audit) | ✅      |
 | 2    | auth, ui kit, admin portal shell                                              | ✅      |
-| 3    | customers, booking                                                            | planned |
+| 3    | customers, booking                                                            | ✅      |
 | 4    | billing, mpesa                                                                | planned |
 | 5    | inventory, orders                                                             | planned |
 | 6    | reports, module generator                                                     | planned |

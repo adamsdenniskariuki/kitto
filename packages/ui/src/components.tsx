@@ -392,6 +392,27 @@ export function Alert({
   );
 }
 
+/** The result of the last form submission (from ?notice= / ?error=), shown above a page's content. */
+/** The hidden field every tenant form carries; Server Actions re-check membership from it. */
+export function TenantField({ slug }: { slug: string }) {
+  return <input type="hidden" name="tenant" value={slug} />;
+}
+
+export function Flash({
+  notice,
+  error,
+}: {
+  notice?: string | undefined;
+  error?: string | undefined;
+}) {
+  if (!notice && !error) return null;
+  return (
+    <div className="mb-6">
+      {error ? <Alert tone="danger">{error}</Alert> : <Alert tone="success">{notice}</Alert>}
+    </div>
+  );
+}
+
 /** A key figure for dashboards and reports. */
 export function Stat({
   label,
