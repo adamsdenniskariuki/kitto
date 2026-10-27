@@ -1,6 +1,6 @@
 # Setup and deployment
 
-This guide covers running Kitto locally, creating the hosted Supabase project, and deploying an app (such as `apps/demo`) to Vercel. M-Pesa (Daraja) setup is added with the `mpesa` module.
+This guide covers running Kitto locally, creating the hosted Supabase project, and deploying an app (such as `apps/demo`) to Vercel, and connecting M-Pesa (Daraja).
 
 ## 1. Local development
 
@@ -71,20 +71,47 @@ Migrations are append-only. To change the schema, add a new migration in the own
 
 **Subdomain mode:** add a wildcard domain (`*.example.com`) to the project. Vercel needs to manage the domain's nameservers to issue wildcard certificates. Set `NEXT_PUBLIC_ROOT_DOMAIN=example.com`. The session cookie is then scoped to `.example.com`, so one sign-in covers every tenant subdomain.
 
-## 4. Environment variables
+## 4. M-Pesa (Daraja)
+
+Locally and in CI, `MPESA_ENV=mock` needs no account: "Send M-Pesa request" skips Safaricom and, a second later, the app posts a Daraja-shaped callback to its own callback route. Phone numbers ending `1032` simulate the customer cancelling, `0001` a failure, and anything else a successful payment. Leave `MPESA_ENV` unset to hide M-Pesa entirely. **Never set `mock` on a real deployment**: it marks invoices paid without any money moving.
+
+To use the Daraja **sandbox**:
+
+1. Sign up at https://developer.safaricom.co.ke, then **My Apps → Add a new app** with the _Lipa Na M-Pesa Sandbox_ (M-Pesa Express) product. Copy its **Consumer Key** and **Consumer Secret**.
+2. Under **APIs → M-Pesa Express → Simulate**, note the sandbox test credentials: shortcode `174379` and the sandbox **passkey** shown there. Put them in `.env.local` (never commit them):
+   ```bash
+   MPESA_ENV=sandbox
+   MPESA_CONSUMER_KEY=…
+   MPESA_CONSUMER_SECRET=…
+   MPESA_SHORTCODE=174379
+   MPESA_PASSKEY=…
+   ```
+3. **Give Safaricom a public https URL to call back.** Daraja can't reach `localhost`. Either deploy (a Vercel preview URL works) or run a tunnel to your dev server, e.g. `cloudflared tunnel --url http://localhost:3000` or `ngrok http 3000`, then set `MPESA_CALLBACK_BASE_URL=https://<your-tunnel-or-deploy>` (no trailing slash). It defaults to `NEXT_PUBLIC_SITE_URL`, and must be `https` outside mock mode.
+4. The callback path is `/api/mpesa/callback/<secret>`. You don't configure the secret: every request gets its own random token in the path and the database stores only its hash, so there is nothing to register on the Daraja portal or to rotate. Make sure your app mounts the route (`apps/demo/src/app/api/mpesa/callback/[secret]/route.ts`) and that the proxy matcher excludes `api/mpesa/` (it does in the demo).
+5. Restart the app, issue an invoice in a KES workspace and use **Send M-Pesa request** with a sandbox test phone number (Safaricom's simulator lists them). The invoice updates live when the callback arrives.
+
+For **production**, apply for M-Pesa Express (Go Live) on the portal, then set `MPESA_ENV=production` with your own shortcode (paybill or till), the production passkey Safaricom emails you, and production consumer key/secret, and point `MPESA_CALLBACK_BASE_URL` at your production domain. One set of credentials serves the whole deployment (all tenants); see the M-Pesa section of [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## 5. Environment variables
 
 `NEXT_PUBLIC_*` values are compiled into the browser bundle; everything else is server-only. [`.env.example`](../.env.example) mirrors this table and holds placeholders only.
 
-| Name                            | Value                                                                                 | Public / secret |
-| ------------------------------- | ------------------------------------------------------------------------------------- | --------------- |
-| `NEXT_PUBLIC_SITE_URL`          | `https://app.example.com` (locally `http://localhost:3000`)                           | Public          |
-| `NEXT_PUBLIC_TENANT_MODE`       | `path` or `subdomain`                                                                 | Public          |
-| `NEXT_PUBLIC_ROOT_DOMAIN`       | Subdomain mode only: `example.com` (locally `lvh.me:3000`)                            | Public          |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase → Project Settings → API (locally from `supabase status`)                    | Public          |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → API keys → anon / publishable                                              | Public          |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase → API keys → service_role. Used by trusted server jobs and payment callbacks | **Secret**      |
-| `MAILPIT_URL`                   | Tests only: local Mailpit, `http://127.0.0.1:55324`                                   | n/a             |
+| Name                            | Value                                                                                                     | Public / secret |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------- |
+| `NEXT_PUBLIC_SITE_URL`          | `https://app.example.com` (locally `http://localhost:3000`)                                               | Public          |
+| `NEXT_PUBLIC_TENANT_MODE`       | `path` or `subdomain`                                                                                     | Public          |
+| `NEXT_PUBLIC_ROOT_DOMAIN`       | Subdomain mode only: `example.com` (locally `lvh.me:3000`)                                                | Public          |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase → Project Settings → API (locally from `supabase status`)                                        | Public          |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → API keys → anon / publishable                                                                  | Public          |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase → API keys → service_role. Used by trusted server jobs and payment callbacks                     | **Secret**      |
+| `MAILPIT_URL`                   | Tests only: local Mailpit, `http://127.0.0.1:55324`                                                       | n/a             |
+| `MPESA_ENV`                     | `mock` (local, CI), `sandbox` or `production`; unset turns M-Pesa off                                     | Server          |
+| `MPESA_CONSUMER_KEY`            | Daraja app consumer key (sandbox/production only)                                                         | **Secret**      |
+| `MPESA_CONSUMER_SECRET`         | Daraja app consumer secret                                                                                | **Secret**      |
+| `MPESA_SHORTCODE`               | Paybill or till number; sandbox `174379`                                                                  | Server          |
+| `MPESA_PASSKEY`                 | Lipa Na M-Pesa passkey (sandbox one from the portal's simulator)                                          | **Secret**      |
+| `MPESA_CALLBACK_BASE_URL`       | Public https origin Daraja calls back, e.g. `https://app.example.com`. Defaults to `NEXT_PUBLIC_SITE_URL` | Server          |
 
-## 5. GitHub Actions
+## 6. GitHub Actions
 
-CI needs **no secrets**. It starts an ephemeral local Supabase stack, applies every migration from scratch, runs pgTAP, unit tests and the build, and then runs Playwright and axe against the demo app.
+CI needs **no secrets** (M-Pesa runs with `MPESA_ENV=mock`). It starts an ephemeral local Supabase stack, applies every migration from scratch, runs pgTAP, unit tests and the build, and then runs Playwright and axe against the demo app.

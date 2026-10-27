@@ -269,7 +269,9 @@ flowchart BT
   admin["@kitto/admin"] --> auth
   customers["@kitto/customers"] --> auth
   booking["@kitto/booking"] --> customers
-  app["apps/demo"] --> admin & customers & booking
+  billing["@kitto/billing"] --> customers
+  mpesa["@kitto/mpesa"] --> billing
+  app["apps/demo"] --> admin & customers & booking & billing & mpesa
 ```
 
 ### Cross-module pages
@@ -330,3 +332,96 @@ The status machine is enforced by a trigger; `STATUS_TRANSITIONS` in TypeScript 
 | `create_recurring_reservations(...)`      | recursive CTE produces the occurrences; one insert, so a single clash rolls back the whole series |
 
 Prices are stored as `price_minor` (integer cents) computed from the resource's rate when the reservation is made, so later rate changes don't rewrite history. Pages subscribe to Supabase Realtime (`LiveRefresh`) so the agenda updates when a colleague books.
+
+### Billing (`@kitto/billing`)
+
+Quotes and invoices share one `invoices` table (`kind = 'quote' | 'invoice'`) with `invoice_lines` and append-only `payments`. A document can point at a customer and, generically, at whatever it bills: `source_type` + `source_id` (for example `'reservation'` + the reservation's id, later an order). Billing never imports the module that owns the source, so booking (and later orders) don't depend on billing.
+
+**Money** is integer minor units in the tenant's currency. Line subtotal, tax (basis points on top of the price, half-up per line) and total are Postgres `GENERATED` columns, and triggers keep the document totals in step. `math.ts` mirrors the same rounding only to preview totals while typing.
+
+```mermaid
+stateDiagram-v2
+  state "Invoice" as inv {
+    [*] --> draft
+    draft --> issued: issue_invoice (takes the next number)
+    issued --> partially_paid: payment < balance
+    issued --> paid: payment = balance
+    partially_paid --> paid: payment = balance
+    issued --> void: void_invoice (no payments)
+  }
+  state "Quote" as quo {
+    [*] --> q_draft
+    q_draft --> sent: issue_invoice
+    sent --> accepted: convert_quote (creates a draft invoice)
+    sent --> q_void: void_invoice
+  }
+```
+
+Status is **derived in SQL**: only `issue_invoice`, `void_invoice` and `convert_quote` (SECURITY DEFINER, each checking a permission) and the payment trigger change it. Issued documents are frozen; a wrong one is voided and its number stays used. A draft can be deleted.
+
+**Payments** lock the invoice row (`SELECT … FOR UPDATE`) in a `BEFORE INSERT` trigger, refuse anything above the balance, then derive `partially_paid` / `paid` from `paid_minor`. Two people recording the last payment at the same moment can't overpay: the second waits for the lock and then sees the smaller balance. An M-Pesa receipt can settle only one payment per tenant (partial unique index).
+
+**Gapless numbering.** `INV-00001`, `INV-00002`… and `QUO-00001`… per tenant. The number comes from a counter row in `private.billing_counters`, bumped by `INSERT … ON CONFLICT DO UPDATE` inside the issuing transaction:
+
+```mermaid
+sequenceDiagram
+  participant A as Staff A (issue)
+  participant B as Staff B (issue)
+  participant C as billing_counters (tenant, invoice)
+  A->>C: upsert last_value + 1 (row locked)
+  B->>C: upsert last_value + 1
+  Note over B,C: waits for A's lock
+  A->>A: set number INV-00007, commit
+  C-->>B: lock released, sees 7
+  B->>B: INV-00008, commit
+  Note over A,C: if A had rolled back, its 7 is rolled back too, so B gets 7
+```
+
+A sequence would be faster but leaves gaps on rollback, which tax authorities (e.g. KRA eTIMS) don't accept. Drafts have no number, so abandoned drafts never use one.
+
+| Function                                         | What it does                                                                               |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `save_invoice_draft(...)`                        | creates or replaces a draft and its lines in one call (at most 100 lines)                  |
+| `issue_invoice(id)`                              | numbers and dates the document (due date defaults to 14 days)                              |
+| `void_invoice(id, reason)`                       | only issued documents without payments                                                     |
+| `convert_quote(id)`                              | marks a sent quote accepted and copies it into a new draft invoice (`quote_id` links back) |
+| `draft_invoice_for_source(type, id, lines, ...)` | the bridge other modules use: a draft invoice for a reservation, order…                    |
+
+Pages: `InvoicesPage` (filter by type), `NewInvoicePage` (`?kind=quote`, `?customer=`), `EditInvoicePage`, `InvoiceDetailPage` (record payment, issue, convert, void; `sections`, `messages` and `sourceHref` props for other modules). Sections for other modules' pages: `CustomerInvoices` and `SourceInvoices` (the demo puts one on the reservation page with the reservation's price as the suggested line). PDFs are rendered with `@react-pdf/renderer` by `createInvoicePdfRoute()` (`@kitto/billing/pdf`), mounted at `app/t/[tenant]/invoices/[id]/pdf/route.ts`; it checks membership and `billing.view` like any page and returns `application/pdf` with `Cache-Control: private, no-store`.
+
+Permissions: `billing.view`, `billing.create` (drafts), `billing.issue` (issue and convert), `billing.void`, `payments.record`.
+
+### M-Pesa (`@kitto/mpesa`)
+
+Collects invoice payments with Safaricom Daraja **STK push** (the customer gets a PIN prompt on their phone). `mpesa_requests` tracks each prompt; a successful callback records an ordinary `payments` row with `method = 'mpesa'` and the receipt as reference, so billing's overpayment and status rules apply unchanged.
+
+```mermaid
+sequenceDiagram
+  actor Staff
+  participant App as Next.js (requestMpesaAction)
+  participant DB as Postgres
+  participant D as Daraja
+  participant Phone as Customer's phone
+  Staff->>App: phone + amount
+  App->>DB: mpesa_start_request(invoice, amount, phone, sha256(token))
+  Note over DB: locks invoice, checks balance, one pending at a time, 5 per hour
+  App->>D: OAuth token (cached), then STK push with CallBackURL /api/mpesa/callback/<token>
+  D-->>App: CheckoutRequestID
+  App->>DB: mpesa_attach_checkout
+  D->>Phone: PIN prompt
+  Phone-->>D: PIN / cancel / timeout
+  D->>App: POST /api/mpesa/callback/<token>
+  App->>DB: mpesa_record_callback(token, payload) (anon, SECURITY DEFINER)
+  Note over DB: find by token hash, lock, idempotent; success -> payments insert -> invoice paid
+  App-->>D: { ResultCode: 0 }
+  DB-->>Staff: Realtime -> invoice page refreshes
+  Note over App,D: MPESA_ENV=mock: no Daraja calls; after the response the app POSTs a<br/>Daraja-shaped callback to its own callback URL (numbers ending 1032 cancel, 0001 fail)
+```
+
+- **Callback authentication.** Each request gets a fresh random token in its callback path; only its SHA-256 hash is stored. Guessing a path is as hard as guessing the token, there is no shared secret to leak or rotate, and a leaked URL only affects one request. The callback route is excluded from the proxy (no session) and calls one function that anonymous callers may execute.
+- **Idempotent.** A request that is already settled returns `duplicate` and changes nothing, so Safaricom's retries are harmless. A receipt can't be applied twice (unique index on `payments`).
+- **Money is never dropped.** If the customer paid but the payment can't be applied (the invoice was voided or paid meanwhile, or the amount differs), the request becomes `needs_review` for a person to refund or apply by hand.
+- **Mock mode** (`MPESA_ENV=mock`) is used locally and in CI: same code path and SQL, only the HTTP call to Safaricom is replaced, and the callback really travels through the route.
+- **Credentials** are app-level env vars (one paybill/till for the deployment). Per-tenant shortcodes would add an encrypted credentials table and a settings page; the client already takes its config as an argument for that. `stkQuery` (status lookup) is in the client but not yet wired up: requests left pending more than 5 minutes are marked `expired` when the next one starts, and a late callback can still settle an expired request.
+
+Permission: `mpesa.request` (viewing requests needs `billing.view`). The demo composes `InvoiceMpesa` into `InvoiceDetailPage`'s `sections` and mounts `createMpesaCallbackRoute()` at `app/api/mpesa/callback/[secret]/route.ts`.

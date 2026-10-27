@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getTenantContext } from '@kitto/auth/server';
 import { ADMIN_SECTIONS } from '@kitto/admin';
+import { BILLING_PERMISSIONS, billingNav } from '@kitto/billing';
 import { BOOKING_PERMISSIONS, bookingNav } from '@kitto/booking';
 import { customersNav } from '@kitto/customers';
 import { Card, Money, PageHeader, Stat } from '@kitto/ui';
@@ -17,6 +18,10 @@ export default async function TenantHome({ params }: PageProps<'/t/[tenant]'>) {
       ? [{ href: ctx.path('/bookings/resources'), label: 'Resources' }]
       : []),
     ...customersNav(ctx),
+    ...(ctx.can(BILLING_PERMISSIONS.create)
+      ? [{ href: ctx.path('/invoices/new'), label: 'New invoice' }]
+      : []),
+    ...billingNav(ctx),
   ];
   return (
     <>

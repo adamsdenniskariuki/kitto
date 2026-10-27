@@ -92,6 +92,35 @@ test('workspace and admin pages are accessible', async ({ page }, testInfo) => {
     .replace(/^https?:\/\/[^/]+/, '')
     .split('?')[0]!;
 
+  // An issued, part-paid invoice (payment, M-Pesa and line tables) and a draft.
+  await page.goto(`${home}/invoices/new?customer=${customer.split('/').pop()}`);
+  await page.getByLabel('Line 1 description').fill('Room night');
+  await page.getByLabel('Line 1 unit price (KES)').fill('4,500');
+  await page.getByLabel('Line 1 tax %').fill('16');
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await expect(page.getByText('Draft saved.')).toBeVisible();
+  const draft = page
+    .url()
+    .replace(/^https?:\/\/[^/]+/, '')
+    .split('?')[0]!;
+  await page.goto(`${home}/invoices/new`);
+  await page.getByLabel('Line 1 description').fill('Dinner');
+  await page.getByLabel('Line 1 unit price (KES)').fill('1,200');
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await expect(page.getByText('Draft saved.')).toBeVisible();
+  await page.getByRole('button', { name: 'Issue invoice' }).click();
+  await expect(page.getByText('Issued and numbered.')).toBeVisible();
+  await page.locator('#f-amount').fill('200');
+  await page.getByRole('button', { name: 'Record payment' }).click();
+  await expect(page.getByText('Payment recorded.')).toBeVisible();
+  await page.getByLabel("Customer's M-Pesa number").fill('0712 341 032');
+  await page.getByRole('button', { name: 'Send M-Pesa request' }).click();
+  await expect(page.getByText('Payment request sent.', { exact: false })).toBeVisible();
+  const invoice = page
+    .url()
+    .replace(/^https?:\/\/[^/]+/, '')
+    .split('?')[0]!;
+
   await sweep(page, [
     '/onboarding',
     home,
@@ -109,5 +138,11 @@ test('workspace and admin pages are accessible', async ({ page }, testInfo) => {
     reservation,
     `${home}/bookings/resources`,
     resource,
+    `${home}/invoices`,
+    `${home}/invoices/new`,
+    `${home}/invoices/new?kind=quote`,
+    invoice,
+    draft,
+    `${draft}/edit`,
   ]);
 });

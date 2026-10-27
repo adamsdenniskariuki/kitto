@@ -191,6 +191,292 @@ export type Database = {
           },
         ];
       };
+      invoice_lines: {
+        Row: {
+          description: string;
+          id: string;
+          invoice_id: string;
+          line_subtotal_minor: number | null;
+          line_tax_minor: number | null;
+          line_total_minor: number | null;
+          position: number;
+          quantity: number;
+          tax_rate_bp: number;
+          tenant_id: string;
+          unit_price_minor: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          description: string;
+          id?: string;
+          invoice_id: string;
+          line_subtotal_minor?: never;
+          line_tax_minor?: never;
+          line_total_minor?: never;
+          position?: number;
+          quantity?: number;
+          tax_rate_bp?: number;
+          tenant_id: string;
+          unit_price_minor: number;
+        };
+        Update: {
+          description?: string;
+          id?: string;
+          invoice_id?: string;
+          line_subtotal_minor?: never;
+          line_tax_minor?: never;
+          line_total_minor?: never;
+          position?: number;
+          quantity?: number;
+          tax_rate_bp?: number;
+          tenant_id?: string;
+          unit_price_minor?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'invoice_lines_tenant_id_invoice_id_fkey';
+            columns: ['tenant_id', 'invoice_id'];
+            isOneToOne: false;
+            referencedRelation: 'invoices';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
+      invoices: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          customer_id: string | null;
+          due_date: string | null;
+          id: string;
+          issue_date: string | null;
+          issued_at: string | null;
+          kind: string;
+          notes: string;
+          number: string | null;
+          paid_minor: number;
+          quote_id: string | null;
+          source_id: string | null;
+          source_type: string | null;
+          status: string;
+          subtotal_minor: number;
+          tax_minor: number;
+          tenant_id: string;
+          total_minor: number;
+          updated_at: string;
+          void_reason: string | null;
+          voided_at: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          customer_id?: string | null;
+          due_date?: string | null;
+          id?: string;
+          issue_date?: string | null;
+          issued_at?: string | null;
+          kind?: string;
+          notes?: string;
+          number?: string | null;
+          paid_minor?: number;
+          quote_id?: string | null;
+          source_id?: string | null;
+          source_type?: string | null;
+          status?: string;
+          subtotal_minor?: number;
+          tax_minor?: number;
+          tenant_id: string;
+          total_minor?: number;
+          updated_at?: string;
+          void_reason?: string | null;
+          voided_at?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          customer_id?: string | null;
+          due_date?: string | null;
+          id?: string;
+          issue_date?: string | null;
+          issued_at?: string | null;
+          kind?: string;
+          notes?: string;
+          number?: string | null;
+          paid_minor?: number;
+          quote_id?: string | null;
+          source_id?: string | null;
+          source_type?: string | null;
+          status?: string;
+          subtotal_minor?: number;
+          tax_minor?: number;
+          tenant_id?: string;
+          total_minor?: number;
+          updated_at?: string;
+          void_reason?: string | null;
+          voided_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'invoices_tenant_id_customer_id_fkey';
+            columns: ['tenant_id', 'customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'invoices_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'invoices_tenant_id_quote_id_fkey';
+            columns: ['tenant_id', 'quote_id'];
+            isOneToOne: false;
+            referencedRelation: 'invoices';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
+      mpesa_requests: {
+        Row: {
+          amount_minor: number;
+          callback_token_hash: string;
+          checkout_request_id: string | null;
+          completed_at: string | null;
+          created_at: string;
+          id: string;
+          invoice_id: string;
+          merchant_request_id: string | null;
+          payload: Json | null;
+          payment_id: string | null;
+          phone: string;
+          receipt: string | null;
+          requested_by: string | null;
+          result_code: number | null;
+          result_desc: string | null;
+          status: string;
+          tenant_id: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_minor: number;
+          callback_token_hash: string;
+          checkout_request_id?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          id?: string;
+          invoice_id: string;
+          merchant_request_id?: string | null;
+          payload?: Json | null;
+          payment_id?: string | null;
+          phone: string;
+          receipt?: string | null;
+          requested_by?: string | null;
+          result_code?: number | null;
+          result_desc?: string | null;
+          status?: string;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_minor?: number;
+          callback_token_hash?: string;
+          checkout_request_id?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          id?: string;
+          invoice_id?: string;
+          merchant_request_id?: string | null;
+          payload?: Json | null;
+          payment_id?: string | null;
+          phone?: string;
+          receipt?: string | null;
+          requested_by?: string | null;
+          result_code?: number | null;
+          result_desc?: string | null;
+          status?: string;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'mpesa_requests_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'mpesa_requests_tenant_id_invoice_id_fkey';
+            columns: ['tenant_id', 'invoice_id'];
+            isOneToOne: false;
+            referencedRelation: 'invoices';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'mpesa_requests_tenant_id_payment_id_fkey';
+            columns: ['tenant_id', 'payment_id'];
+            isOneToOne: false;
+            referencedRelation: 'payments';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
+      payments: {
+        Row: {
+          amount_minor: number;
+          created_at: string;
+          id: string;
+          invoice_id: string;
+          method: string;
+          note: string;
+          received_at: string;
+          recorded_by: string | null;
+          reference: string | null;
+          tenant_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_minor: number;
+          created_at?: string;
+          id?: string;
+          invoice_id: string;
+          method: string;
+          note?: string;
+          received_at?: string;
+          recorded_by?: string | null;
+          reference?: string | null;
+          tenant_id: string;
+        };
+        Update: {
+          amount_minor?: number;
+          created_at?: string;
+          id?: string;
+          invoice_id?: string;
+          method?: string;
+          note?: string;
+          received_at?: string;
+          recorded_by?: string | null;
+          reference?: string | null;
+          tenant_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'payments_tenant_id_invoice_id_fkey';
+            columns: ['tenant_id', 'invoice_id'];
+            isOneToOne: false;
+            referencedRelation: 'invoices';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
       permissions: {
         Row: {
           description: string;
@@ -654,6 +940,7 @@ export type Database = {
           starts_at: string;
         }[];
       };
+      convert_quote: { Args: { p_quote_id: string }; Returns: string };
       create_recurring_reservations: {
         Args: {
           p_customer_id?: string;
@@ -736,7 +1023,77 @@ export type Database = {
         };
       };
       create_tenant: { Args: { p_name: string; p_slug: string }; Returns: string };
+      draft_invoice_for_source: {
+        Args: {
+          p_customer_id: string;
+          p_lines: Json;
+          p_source_id: string;
+          p_source_type: string;
+          p_tenant_id: string;
+        };
+        Returns: string;
+      };
       has_permission: { Args: { p_permission: string; p_tenant_id: string }; Returns: boolean };
+      issue_invoice: {
+        Args: { p_invoice_id: string };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          customer_id: string | null;
+          due_date: string | null;
+          id: string;
+          issue_date: string | null;
+          issued_at: string | null;
+          kind: string;
+          notes: string;
+          number: string | null;
+          paid_minor: number;
+          quote_id: string | null;
+          source_id: string | null;
+          source_type: string | null;
+          status: string;
+          subtotal_minor: number;
+          tax_minor: number;
+          tenant_id: string;
+          total_minor: number;
+          updated_at: string;
+          void_reason: string | null;
+          voided_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'invoices';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      mpesa_attach_checkout: {
+        Args: {
+          p_checkout_request_id: string;
+          p_merchant_request_id: string;
+          p_request_id: string;
+        };
+        Returns: undefined;
+      };
+      mpesa_fail_request: {
+        Args: { p_request_id: string; p_result_code: number; p_result_desc: string };
+        Returns: string;
+      };
+      mpesa_record_callback: { Args: { p_payload: Json; p_token: string }; Returns: string };
+      mpesa_start_request: {
+        Args: {
+          p_amount_minor: number;
+          p_invoice_id: string;
+          p_phone: string;
+          p_token_hash: string;
+        };
+        Returns: {
+          account_reference: string;
+          description: string;
+          request_id: string;
+        }[];
+      };
       my_permissions: { Args: { p_tenant_id: string }; Returns: string[] };
       my_tenants: {
         Args: Record<PropertyKey, never>;
@@ -752,6 +1109,54 @@ export type Database = {
       reservation_price: {
         Args: { p_during: unknown; p_rate_minor: number; p_rate_unit: string; p_timezone: string };
         Returns: number;
+      };
+      save_invoice_draft: {
+        Args: {
+          p_customer_id: string;
+          p_due_date: string;
+          p_invoice_id: string;
+          p_kind: string;
+          p_lines: Json;
+          p_notes: string;
+          p_source_id?: string;
+          p_source_type?: string;
+          p_tenant_id: string;
+        };
+        Returns: string;
+      };
+      void_invoice: {
+        Args: { p_invoice_id: string; p_reason: string };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          customer_id: string | null;
+          due_date: string | null;
+          id: string;
+          issue_date: string | null;
+          issued_at: string | null;
+          kind: string;
+          notes: string;
+          number: string | null;
+          paid_minor: number;
+          quote_id: string | null;
+          source_id: string | null;
+          source_type: string | null;
+          status: string;
+          subtotal_minor: number;
+          tax_minor: number;
+          tenant_id: string;
+          total_minor: number;
+          updated_at: string;
+          void_reason: string | null;
+          voided_at: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'invoices';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
     };
     Enums: {

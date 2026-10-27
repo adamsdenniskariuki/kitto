@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { SignOutButton, TenantSwitcher } from '@kitto/auth';
 import { getTenantContext } from '@kitto/auth/server';
 import { ADMIN_PERMISSIONS } from '@kitto/admin';
+import { billingNav } from '@kitto/billing';
 import { bookingNav } from '@kitto/booking';
 import { customersNav } from '@kitto/customers';
 import { AppShell, ThemeStyle } from '@kitto/ui';
@@ -28,6 +29,7 @@ export default async function TenantLayout({
     { href: ctx.path('/'), label: 'Home', exact: true },
     ...bookingNav(ctx),
     ...customersNav(ctx),
+    ...billingNav(ctx),
   ];
   if (ADMIN_PERMISSIONS.some((p) => ctx.can(p)))
     nav.push({ href: ctx.path('/admin'), label: 'Admin' });

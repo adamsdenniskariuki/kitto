@@ -26,7 +26,7 @@ flowchart LR
 | 1    | Monorepo, CI, database core (tenants, members, roles/permissions, RLS, audit) | ✅      |
 | 2    | auth, ui kit, admin portal shell                                              | ✅      |
 | 3    | customers, booking                                                            | ✅      |
-| 4    | billing, mpesa                                                                | planned |
+| 4    | billing, mpesa                                                                | ✅      |
 | 5    | inventory, orders                                                             | planned |
 | 6    | reports, module generator                                                     | planned |
 | 7    | demo app, docs and tutorial                                                   | planned |
@@ -60,7 +60,7 @@ cp .env.example apps/demo/.env.local   # add the anon key from `pnpm exec supaba
 pnpm --filter @kitto/demo dev          # http://localhost:3000; sign-in emails land in Mailpit (:55324)
 ```
 
-See [docs/SETUP.md](docs/SETUP.md) for subdomain mode, e2e tests, hosted Supabase and Vercel.
+See [docs/SETUP.md](docs/SETUP.md) for subdomain mode, e2e tests, hosted Supabase, Vercel and M-Pesa (Daraja). Locally, `MPESA_ENV=mock` (the `.env.example` default) makes M-Pesa requests settle themselves a second later without touching Safaricom.
 
 Common scripts:
 

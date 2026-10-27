@@ -106,6 +106,7 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
             echo "MAILPIT_URL=${MAILPIT_URL:-http://127.0.0.1:55324}"
             echo "MPESA_ENV=mock"
+            echo "MPESA_CALLBACK_BASE_URL=http://localhost:3000"
           } >> "$GITHUB_ENV"
 
       - run: pnpm --filter @kitto/demo build
