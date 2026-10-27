@@ -203,7 +203,7 @@ test('orders: charge an order to a reservation and bill it with the stay', async
   await page.getByRole('link', { name: /Room 7/ }).click();
   await expect(page).toHaveURL(new RegExp(`${reservation}$`));
 
-  const charged = page.getByRole('region', { name: 'Orders' });
+  const charged = page.getByRole('region', { name: 'Orders' }).first();
   await expect(charged.getByRole('link', { name: 'Order #1 · Room service' })).toBeVisible();
   await expect(page.getByTestId('reservation-orders-total')).toContainText('300.00');
   await expectNoSideScroll(page);
@@ -220,5 +220,5 @@ test('orders: charge an order to a reservation and bill it with the stay', async
   // The customer's page lists the order too.
   await page.goto(`${home}/customers`);
   await page.getByRole('link', { name: 'Amina Hassan' }).click();
-  await expect(page.getByRole('region', { name: 'Orders' })).toContainText('Room service');
+  await expect(page.getByRole('region', { name: 'Orders' }).first()).toContainText('Room service');
 });
