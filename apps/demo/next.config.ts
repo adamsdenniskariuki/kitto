@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
     '@kitto/booking',
     '@kitto/billing',
     '@kitto/mpesa',
+    '@kitto/inventory',
+    '@kitto/orders',
   ],
   // Rendered on the server only (invoice PDFs); keep it out of the bundle.
   serverExternalPackages: ['@react-pdf/renderer'],

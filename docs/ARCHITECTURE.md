@@ -271,8 +271,12 @@ flowchart BT
   booking["@kitto/booking"] --> customers
   billing["@kitto/billing"] --> customers
   mpesa["@kitto/mpesa"] --> billing
-  app["apps/demo"] --> admin & customers & booking & billing & mpesa
+  inventory["@kitto/inventory"] --> auth
+  orders["@kitto/orders"] --> customers & inventory
+  app["apps/demo"] --> admin & customers & booking & billing & mpesa & inventory & orders
 ```
+
+TypeScript dependencies only. In SQL, migrations run in timestamp order, so a later module may reference an earlier one's tables (orders has a foreign key to booking's `reservations` and triggers on billing's `invoices`) without its package importing them; the app composes the pages.
 
 ### Cross-module pages
 
@@ -425,3 +429,94 @@ sequenceDiagram
 - **Credentials** are app-level env vars (one paybill/till for the deployment). Per-tenant shortcodes would add an encrypted credentials table and a settings page; the client already takes its config as an argument for that. `stkQuery` (status lookup) is in the client but not yet wired up: requests left pending more than 5 minutes are marked `expired` when the next one starts, and a late callback can still settle an expired request.
 
 Permission: `mpesa.request` (viewing requests needs `billing.view`). The demo composes `InvoiceMpesa` into `InvoiceDetailPage`'s `sections` and mounts `createMpesaCallbackRoute()` at `app/api/mpesa/callback/[secret]/route.ts`.
+
+### Inventory (`@kitto/inventory`)
+
+**Items** (SKU unique per tenant, name, unit, optional cost and price in minor units, reorder level), **suppliers**, **stock locations** ("Main store", "Bar", "Kitchen"; every workspace gets a default one), **purchases** with lines, and an append-only **stock movement ledger**. Per item, `track_stock = false` makes it a service (never counted) and `allow_negative = true` lets stock go below zero (for example ingredients that are counted later).
+
+Quantities are `numeric(12,3)` (so 0.5 kg or 1.25 l works); levels are `numeric(14,3)`. Money stays integer minor units.
+
+```mermaid
+flowchart LR
+  rp["receive_purchase()"] -- purchase +qty --> L
+  adj["adjust_stock(reason)"] -- adjustment ±qty --> L
+  tr["transfer_stock()"] -- "transfer −qty at from<br/>transfer +qty at to<br/>(one transaction)" --> L
+  ord["orders: send / cancel"] -- "sale −qty / return +qty" --> L
+  L[("stock_movements<br/>append-only ledger")] -- "AFTER INSERT trigger<br/>upsert, refuse < 0" --> S[("stock_levels<br/>(item, location) → on hand")]
+  S --> V["item_stock view<br/>on hand, low = on hand ≤ reorder level (or < 0)"]
+  V --> UI["items list · low-stock page · home card<br/>(LiveRefresh via Realtime)"]
+```
+
+**Stock is derived from movements.** Each movement has a signed quantity at one location and a kind (`purchase`, `sale`, `return`, `adjustment`, `transfer`; the two halves of a transfer share a `transfer_id`). Movements can't be updated or deleted; a mistake is corrected with another movement. `stock_levels` is a summary maintained only by the ledger trigger (clients can read it, never write it), so it always equals the sum of movements, which pgTAP checks.
+
+**No negative stock, even under concurrency.** Whoever inserts movements first calls `private.lock_stock_levels(tenant, pairs)`: it inserts any missing `(item, location)` rows at 0 (`ON CONFLICT DO NOTHING`) and then takes `SELECT … FOR UPDATE` on all of them **in item, location order**, so two transactions touching the same pairs queue instead of deadlocking. The trigger then applies the change and raises `22023` ("Not enough … in stock") if the result is below zero and the item doesn't allow it, which rolls back the whole operation: a transfer, a purchase receipt or an order being sent is all or nothing.
+
+```mermaid
+sequenceDiagram
+  participant A as Waiter A (send: 3 sodas)
+  participant B as Waiter B (send: 3 sodas)
+  participant S as stock_levels (soda, bar) = 5
+  A->>S: SELECT … FOR UPDATE
+  B->>S: SELECT … FOR UPDATE
+  Note over B,S: waits for A's lock
+  A->>S: insert sale −3 → 2, commit
+  S-->>B: lock released, sees 2
+  B->>B: 2 − 3 < 0 → 22023, rolled back ("Not enough stock")
+```
+
+`inventory_concurrency_test.sql` proves the lock with a second connection (`dblink`): while one transaction holds the row, the other can't take it.
+
+| Function                                 | What it does                                                                        |
+| ---------------------------------------- | ----------------------------------------------------------------------------------- |
+| `receive_purchase(id, update_costs)`     | one `purchase` movement per line; optionally sets each item's cost; purchase frozen |
+| `adjust_stock(item, location, qty, why)` | an `adjustment` movement; a reason is required                                      |
+| `transfer_stock(item, from, to, qty, …)` | a pair of movements in one transaction; different, active locations                 |
+| `item_stock` view                        | per item: on hand across locations, reorder level, `low`                            |
+
+Pages: `InventoryPage` (items, search), `NewItemPage`, `ItemDetailPage` (edit, stock per location, recent movements), `SuppliersPage`/`SupplierDetailPage`, `LocationsPage`, `PurchasesPage`/`NewPurchasePage`/`PurchaseDetailPage`, `MovementsPage` (the ledger), `AdjustStockPage`, `TransferStockPage`, `LowStockPage`, plus `LowStockCard` for a dashboard.
+
+Permissions: `inventory.view`, `inventory.manage` (items, suppliers, locations), `inventory.purchase`, `inventory.adjust`, `inventory.transfer`. Defaults: manager and storekeeper get all; front desk, waiter, sales and viewer can view.
+
+### Orders (`@kitto/orders`)
+
+Orders and order lines for a restaurant table, a bar tab or a parts counter. An order has a gapless per-tenant number (`#1`, `#2`… from a locked counter row in `private.order_counters`, the same technique as invoice numbers), a label ("Table 4", "Counter"), an optional customer, an optional reservation it is charged to, and the location its stock comes from. A line is an inventory item (name and price copied from it unless given) or free text with a price; totals are maintained by triggers, mirrored in `math.ts` for previews.
+
+```mermaid
+stateDiagram-v2
+  [*] --> open
+  open --> sent: send (takes stock)
+  open --> cancelled
+  sent --> fulfilled
+  sent --> cancelled: returns stock
+  fulfilled --> paid: invoice paid, or by hand
+  paid --> [*]
+  cancelled --> [*]
+```
+
+- **Lines** can only be added, changed or removed while the order is `open` (trigger).
+- **Stock is taken when the order is sent** ("to the kitchen"): one `sale` movement per tracked item at the order's location, in the same transaction as the status change. If there isn't enough (and the item doesn't allow negative stock) the order stays open and nothing is taken. Cancelling a sent order inserts `return` movements for exactly what it consumed. A fulfilled order can't be cancelled; correct it with an adjustment and a credit.
+- **Status changes only through `set_order_status(id, status, reason)`** (SECURITY DEFINER), which checks the permission for that step; a trigger enforces the flow for everyone. Cancelling needs a reason.
+- **Paid.** Billing's generic source links orders to invoices: inserting an invoice with source `order` sets that order's `invoice_id`; one with source `reservation` picks up the reservation's sent or fulfilled orders that aren't billed yet. When the invoice becomes paid, its fulfilled orders become paid (sent ones as soon as they're fulfilled). Voiding the invoice releases its orders. An order with no invoice and no reservation can be marked paid by hand (cash at the counter).
+- **Charge to a booking.** `orders.reservation_id` is a nullable foreign key to `reservations` (customer defaults from it; a cancelled reservation is refused). The reservation page shows `ReservationOrders`, and its "Create invoice" adds one line per order line ("Order #3 · Soda") next to the stay, so the guest gets one bill.
+
+```mermaid
+sequenceDiagram
+  actor W as Waiter
+  participant O as orders
+  participant L as stock_movements
+  participant I as invoices (billing)
+  W->>O: open order, add lines
+  W->>O: set_order_status(sent)
+  O->>L: sale movements (locked, no negative)
+  W->>O: set_order_status(fulfilled)
+  W->>I: Create invoice (source order, or the reservation's)
+  I-->>O: trigger sets orders.invoice_id
+  Note over I: issue, record payment / M-Pesa
+  I-->>O: invoice paid → order paid
+```
+
+The package imports only `customers` and `inventory`; it never imports booking or billing. The app composes: `SourceInvoices` (billing) on the order page with `orderInvoiceLines()`, `ReservationOrders` and `reservationOrderInvoiceLines()` on the reservation page, `CustomerOrders` on the customer page.
+
+Pages: `OrdersPage` (status filter, live refresh), `NewOrderPage` (`?reservation=`, `?customer=`), `OrderDetailPage` (lines, details, next step; `sections`, `invoiceHref`, `reservationHref`).
+
+Permissions: `orders.view`, `orders.create` (open orders and edit lines), `orders.serve` (send and fulfil), `orders.cancel`, `orders.bill` (mark paid). Defaults: manager gets all; front desk gets all; waiter and sales create, serve and bill; storekeeper and viewer can view.

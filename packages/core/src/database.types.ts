@@ -343,6 +343,69 @@ export type Database = {
           },
         ];
       };
+      items: {
+        Row: {
+          active: boolean;
+          allow_negative: boolean;
+          category: string;
+          cost_minor: number | null;
+          created_at: string;
+          description: string;
+          id: string;
+          name: string;
+          price_minor: number | null;
+          reorder_level: number;
+          sku: string | null;
+          tenant_id: string;
+          track_stock: boolean;
+          unit: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          active?: boolean;
+          allow_negative?: boolean;
+          category?: string;
+          cost_minor?: number | null;
+          created_at?: string;
+          description?: string;
+          id?: string;
+          name: string;
+          price_minor?: number | null;
+          reorder_level?: number;
+          sku?: string | null;
+          tenant_id: string;
+          track_stock?: boolean;
+          unit?: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          allow_negative?: boolean;
+          category?: string;
+          cost_minor?: number | null;
+          created_at?: string;
+          description?: string;
+          id?: string;
+          name?: string;
+          price_minor?: number | null;
+          reorder_level?: number;
+          sku?: string | null;
+          tenant_id?: string;
+          track_stock?: boolean;
+          unit?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'items_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       mpesa_requests: {
         Row: {
           amount_minor: number;
@@ -429,6 +492,171 @@ export type Database = {
           },
         ];
       };
+      order_lines: {
+        Row: {
+          description: string;
+          id: string;
+          item_id: string | null;
+          line_total_minor: number | null;
+          note: string;
+          order_id: string;
+          position: number;
+          quantity: number;
+          tenant_id: string;
+          unit_price_minor: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          description: string;
+          id?: string;
+          item_id?: string | null;
+          line_total_minor?: never;
+          note?: string;
+          order_id: string;
+          position?: number;
+          quantity?: number;
+          tenant_id: string;
+          unit_price_minor: number;
+        };
+        Update: {
+          description?: string;
+          id?: string;
+          item_id?: string | null;
+          line_total_minor?: never;
+          note?: string;
+          order_id?: string;
+          position?: number;
+          quantity?: number;
+          tenant_id?: string;
+          unit_price_minor?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'order_lines_tenant_id_item_id_fkey';
+            columns: ['tenant_id', 'item_id'];
+            isOneToOne: false;
+            referencedRelation: 'item_stock';
+            referencedColumns: ['tenant_id', 'item_id'];
+          },
+          {
+            foreignKeyName: 'order_lines_tenant_id_item_id_fkey';
+            columns: ['tenant_id', 'item_id'];
+            isOneToOne: false;
+            referencedRelation: 'items';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'order_lines_tenant_id_order_id_fkey';
+            columns: ['tenant_id', 'order_id'];
+            isOneToOne: false;
+            referencedRelation: 'orders';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
+      orders: {
+        Row: {
+          cancel_reason: string | null;
+          cancelled_at: string | null;
+          channel: string;
+          created_at: string;
+          created_by: string | null;
+          customer_id: string | null;
+          fulfilled_at: string | null;
+          id: string;
+          invoice_id: string | null;
+          location_id: string;
+          notes: string;
+          number: number;
+          paid_at: string | null;
+          reservation_id: string | null;
+          sent_at: string | null;
+          status: string;
+          tenant_id: string;
+          total_minor: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
+          channel?: string;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id?: string | null;
+          fulfilled_at?: string | null;
+          id?: string;
+          invoice_id?: string | null;
+          location_id: string;
+          notes?: string;
+          number: number;
+          paid_at?: string | null;
+          reservation_id?: string | null;
+          sent_at?: string | null;
+          status?: string;
+          tenant_id: string;
+          total_minor?: number;
+          updated_at?: string;
+        };
+        Update: {
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
+          channel?: string;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id?: string | null;
+          fulfilled_at?: string | null;
+          id?: string;
+          invoice_id?: string | null;
+          location_id?: string;
+          notes?: string;
+          number?: number;
+          paid_at?: string | null;
+          reservation_id?: string | null;
+          sent_at?: string | null;
+          status?: string;
+          tenant_id?: string;
+          total_minor?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'orders_tenant_id_customer_id_fkey';
+            columns: ['tenant_id', 'customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'orders_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'orders_tenant_id_invoice_id_fkey';
+            columns: ['tenant_id', 'invoice_id'];
+            isOneToOne: false;
+            referencedRelation: 'invoices';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'orders_tenant_id_location_id_fkey';
+            columns: ['tenant_id', 'location_id'];
+            isOneToOne: false;
+            referencedRelation: 'stock_locations';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'orders_tenant_id_reservation_id_fkey';
+            columns: ['tenant_id', 'reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservations';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
       payments: {
         Row: {
           amount_minor: number;
@@ -495,6 +723,133 @@ export type Database = {
           module?: string;
         };
         Relationships: [];
+      };
+      purchase_lines: {
+        Row: {
+          id: string;
+          item_id: string;
+          line_total_minor: number | null;
+          position: number;
+          purchase_id: string;
+          quantity: number;
+          tenant_id: string;
+          unit_cost_minor: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          id?: string;
+          item_id: string;
+          line_total_minor?: never;
+          position?: number;
+          purchase_id: string;
+          quantity: number;
+          tenant_id: string;
+          unit_cost_minor?: number;
+        };
+        Update: {
+          id?: string;
+          item_id?: string;
+          line_total_minor?: never;
+          position?: number;
+          purchase_id?: string;
+          quantity?: number;
+          tenant_id?: string;
+          unit_cost_minor?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'purchase_lines_tenant_id_item_id_fkey';
+            columns: ['tenant_id', 'item_id'];
+            isOneToOne: false;
+            referencedRelation: 'item_stock';
+            referencedColumns: ['tenant_id', 'item_id'];
+          },
+          {
+            foreignKeyName: 'purchase_lines_tenant_id_item_id_fkey';
+            columns: ['tenant_id', 'item_id'];
+            isOneToOne: false;
+            referencedRelation: 'items';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'purchase_lines_tenant_id_purchase_id_fkey';
+            columns: ['tenant_id', 'purchase_id'];
+            isOneToOne: false;
+            referencedRelation: 'purchases';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
+      purchases: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          location_id: string;
+          notes: string;
+          received_at: string | null;
+          received_by: string | null;
+          reference: string;
+          status: string;
+          supplier_id: string;
+          tenant_id: string;
+          total_minor: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          location_id: string;
+          notes?: string;
+          received_at?: string | null;
+          received_by?: string | null;
+          reference?: string;
+          status?: string;
+          supplier_id: string;
+          tenant_id: string;
+          total_minor?: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          location_id?: string;
+          notes?: string;
+          received_at?: string | null;
+          received_by?: string | null;
+          reference?: string;
+          status?: string;
+          supplier_id?: string;
+          tenant_id?: string;
+          total_minor?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'purchases_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'purchases_tenant_id_location_id_fkey';
+            columns: ['tenant_id', 'location_id'];
+            isOneToOne: false;
+            referencedRelation: 'stock_locations';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'purchases_tenant_id_supplier_id_fkey';
+            columns: ['tenant_id', 'supplier_id'];
+            isOneToOne: false;
+            referencedRelation: 'suppliers';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
       };
       reservation_series: {
         Row: {
@@ -803,6 +1158,228 @@ export type Database = {
           },
         ];
       };
+      stock_levels: {
+        Row: {
+          item_id: string;
+          location_id: string;
+          quantity: number;
+          tenant_id: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          item_id: string;
+          location_id: string;
+          quantity?: number;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          item_id?: string;
+          location_id?: string;
+          quantity?: number;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'stock_levels_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'stock_levels_tenant_id_item_id_fkey';
+            columns: ['tenant_id', 'item_id'];
+            isOneToOne: false;
+            referencedRelation: 'item_stock';
+            referencedColumns: ['tenant_id', 'item_id'];
+          },
+          {
+            foreignKeyName: 'stock_levels_tenant_id_item_id_fkey';
+            columns: ['tenant_id', 'item_id'];
+            isOneToOne: false;
+            referencedRelation: 'items';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'stock_levels_tenant_id_location_id_fkey';
+            columns: ['tenant_id', 'location_id'];
+            isOneToOne: false;
+            referencedRelation: 'stock_locations';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
+      stock_locations: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          id: string;
+          is_default: boolean;
+          name: string;
+          position: number;
+          tenant_id: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          is_default?: boolean;
+          name: string;
+          position?: number;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          is_default?: boolean;
+          name?: string;
+          position?: number;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'stock_locations_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      stock_movements: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          item_id: string;
+          kind: string;
+          location_id: string;
+          quantity: number;
+          reason: string;
+          source_id: string | null;
+          source_type: string | null;
+          tenant_id: string;
+          transfer_id: string | null;
+          unit_cost_minor: number | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          item_id: string;
+          kind: string;
+          location_id: string;
+          quantity: number;
+          reason?: string;
+          source_id?: string | null;
+          source_type?: string | null;
+          tenant_id: string;
+          transfer_id?: string | null;
+          unit_cost_minor?: number | null;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          item_id?: string;
+          kind?: string;
+          location_id?: string;
+          quantity?: number;
+          reason?: string;
+          source_id?: string | null;
+          source_type?: string | null;
+          tenant_id?: string;
+          transfer_id?: string | null;
+          unit_cost_minor?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'stock_movements_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'stock_movements_tenant_id_item_id_fkey';
+            columns: ['tenant_id', 'item_id'];
+            isOneToOne: false;
+            referencedRelation: 'item_stock';
+            referencedColumns: ['tenant_id', 'item_id'];
+          },
+          {
+            foreignKeyName: 'stock_movements_tenant_id_item_id_fkey';
+            columns: ['tenant_id', 'item_id'];
+            isOneToOne: false;
+            referencedRelation: 'items';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+          {
+            foreignKeyName: 'stock_movements_tenant_id_location_id_fkey';
+            columns: ['tenant_id', 'location_id'];
+            isOneToOne: false;
+            referencedRelation: 'stock_locations';
+            referencedColumns: ['tenant_id', 'id'];
+          },
+        ];
+      };
+      suppliers: {
+        Row: {
+          active: boolean;
+          contact_name: string;
+          created_at: string;
+          email: string | null;
+          id: string;
+          name: string;
+          notes: string;
+          phone: string | null;
+          tenant_id: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          active?: boolean;
+          contact_name?: string;
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          name: string;
+          notes?: string;
+          phone?: string | null;
+          tenant_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          contact_name?: string;
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          name?: string;
+          notes?: string;
+          phone?: string | null;
+          tenant_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'suppliers_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       tenant_members: {
         Row: {
           created_at: string;
@@ -894,10 +1471,64 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      item_stock: {
+        Row: {
+          active: boolean | null;
+          category: string | null;
+          item_id: string | null;
+          low: boolean | null;
+          name: string | null;
+          on_hand: number | null;
+          reorder_level: number | null;
+          sku: string | null;
+          tenant_id: string | null;
+          track_stock: boolean | null;
+          unit: string | null;
+        };
+        ComputedFields: never;
+        Relationships: [
+          {
+            foreignKeyName: 'items_tenant_id_fkey';
+            columns: ['tenant_id'];
+            isOneToOne: false;
+            referencedRelation: 'tenants';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
+      adjust_stock: {
+        Args: {
+          p_item_id: string;
+          p_location_id: string;
+          p_quantity: number;
+          p_reason: string;
+          p_tenant_id: string;
+        };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          item_id: string;
+          kind: string;
+          location_id: string;
+          quantity: number;
+          reason: string;
+          source_id: string | null;
+          source_type: string | null;
+          tenant_id: string;
+          transfer_id: string | null;
+          unit_cost_minor: number | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'stock_movements';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       available_resources: {
         Args: {
           p_ends_local: string;
@@ -1106,6 +1737,30 @@ export type Database = {
         }[];
       };
       normalize_phone: { Args: { p_phone: string }; Returns: string };
+      receive_purchase: {
+        Args: { p_purchase_id: string; p_update_costs?: boolean };
+        Returns: {
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          location_id: string;
+          notes: string;
+          received_at: string | null;
+          received_by: string | null;
+          reference: string;
+          status: string;
+          supplier_id: string;
+          tenant_id: string;
+          total_minor: number;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'purchases';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       reservation_price: {
         Args: { p_during: unknown; p_rate_minor: number; p_rate_unit: string; p_timezone: string };
         Returns: number;
@@ -1121,6 +1776,47 @@ export type Database = {
           p_source_id?: string;
           p_source_type?: string;
           p_tenant_id: string;
+        };
+        Returns: string;
+      };
+      set_order_status: {
+        Args: { p_order_id: string; p_reason?: string; p_status: string };
+        Returns: {
+          cancel_reason: string | null;
+          cancelled_at: string | null;
+          channel: string;
+          created_at: string;
+          created_by: string | null;
+          customer_id: string | null;
+          fulfilled_at: string | null;
+          id: string;
+          invoice_id: string | null;
+          location_id: string;
+          notes: string;
+          number: number;
+          paid_at: string | null;
+          reservation_id: string | null;
+          sent_at: string | null;
+          status: string;
+          tenant_id: string;
+          total_minor: number;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'orders';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      transfer_stock: {
+        Args: {
+          p_from: string;
+          p_item_id: string;
+          p_note?: string;
+          p_quantity: number;
+          p_tenant_id: string;
+          p_to: string;
         };
         Returns: string;
       };

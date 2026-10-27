@@ -27,7 +27,7 @@ flowchart LR
 | 2    | auth, ui kit, admin portal shell                                              | ✅      |
 | 3    | customers, booking                                                            | ✅      |
 | 4    | billing, mpesa                                                                | ✅      |
-| 5    | inventory, orders                                                             | planned |
+| 5    | inventory, orders                                                             | ✅      |
 | 6    | reports, module generator                                                     | planned |
 | 7    | demo app, docs and tutorial                                                   | planned |
 

@@ -19,7 +19,13 @@ export default async function Page({
       // M-Pesa composes in here; billing itself doesn't know about M-Pesa.
       sections={[(inv) => <InvoiceMpesa ctx={ctx} invoice={inv} />]}
       messages={MPESA_MESSAGES}
-      sourceHref={(type, sourceId) => (type === 'reservation' ? `/bookings/${sourceId}` : null)}
+      sourceHref={(type, sourceId) =>
+        type === 'reservation'
+          ? `/bookings/${sourceId}`
+          : type === 'order'
+            ? `/orders/${sourceId}`
+            : null
+      }
     />
   );
 }
