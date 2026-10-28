@@ -1,0 +1,92 @@
+name: Docs site
+
+# Builds the static docs and landing site (apps/site), runs its Playwright
+# smoke and axe tests, and deploys it to GitHub Pages at kitto.madebyfavor.com.
+# Pull requests build and test only; pushes to main (and manual runs) deploy.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/site/**
+      - docs/**
+      - README.md
+      - LEARNING.md
+      - .github/workflows/pages.yml
+      - pnpm-lock.yaml
+  pull_request:
+    paths:
+      - apps/site/**
+      - docs/**
+      - README.md
+      - LEARNING.md
+      - .github/workflows/pages.yml
+      - pnpm-lock.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ASTRO_TELEMETRY_DISABLED: '1'
+
+jobs:
+  build-test:
+    name: Build and test the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Fails on broken links between the rendered docs.
+      - run: pnpm --filter @kitto/site build
+      - run: pnpm --filter @kitto/site exec playwright install --with-deps chromium
+      - name: Playwright (smoke + axe, light and dark at 360px)
+        run: pnpm --filter @kitto/site test:e2e
+        env:
+          CI: 'true'
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: site-playwright-report
+          path: |
+            apps/site/playwright-report/
+            apps/site/test-results/
+          retention-days: 7
+
+      - if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/site/dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build-test
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

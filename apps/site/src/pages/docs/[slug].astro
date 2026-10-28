@@ -1,0 +1,91 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Base from '../../layouts/Base.astro';
+import { DOCS, docRoute, getDocs, type RenderedDoc } from '../../lib/docs';
+import { githubUrl } from '../../lib/links';
+
+export const getStaticPaths = (async () => {
+  const docs = await getDocs();
+  return docs.map((doc, index) => ({
+    params: { slug: doc.slug },
+    props: { doc, prev: docs[index - 1], next: docs[index + 1] },
+  }));
+}) satisfies GetStaticPaths;
+
+interface Props {
+  doc: RenderedDoc;
+  prev?: RenderedDoc;
+  next?: RenderedDoc;
+}
+const { doc, prev, next } = Astro.props;
+const toc = doc.headings.filter((h) => h.depth === 2);
+---
+
+<Base title={`${doc.title} | Kitto docs`} description={doc.description}>
+  <div class="shell docs-shell">
+    <aside class="docs-sidebar" aria-label="Documentation">
+      <nav class="docs-nav" aria-label="Docs">
+        <ul>
+          {
+            DOCS.map((d) => (
+              <li>
+                <a href={docRoute(d.slug)} aria-current={d.slug === doc.slug ? 'page' : undefined}>
+                  {d.navTitle}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+      {
+        toc.length > 0 && (
+          <details class="toc">
+            <summary>On this page</summary>
+            <nav aria-label="On this page">
+              <ol>
+                {toc.map((h) => (
+                  <li>
+                    <a href={`#${h.id}`}>{h.text}</a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </details>
+        )
+      }
+    </aside>
+    <article class="doc">
+      <header class="doc-header">
+        <p class="eyebrow">Docs · {doc.navTitle}</p>
+        <h1>{doc.title}</h1>
+        <p>{doc.description}</p>
+        <p class="doc-source">
+          Rendered from <a href={githubUrl(doc.source, 'file')}><code>{doc.source}</code></a>
+        </p>
+      </header>
+      <div class="prose" set:html={doc.html} />
+      <nav class="doc-pager" aria-label="Previous and next">
+        {
+          prev ? (
+            <a class="button secondary" href={prev.route}>
+              ← {prev.navTitle}
+            </a>
+          ) : (
+            <span />
+          )
+        }
+        {
+          next && (
+            <a class="button secondary" href={next.route}>
+              {next.navTitle} →
+            </a>
+          )
+        }
+      </nav>
+    </article>
+  </div>
+</Base>
+
+<script>
+  import '../../scripts/mermaid';
+</script>

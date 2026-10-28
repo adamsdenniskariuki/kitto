@@ -4,6 +4,7 @@ node_modules/
 .next/
 out/
 dist/
+.astro/
 coverage/
 *.tsbuildinfo
 next-env.d.ts
