@@ -130,3 +130,7 @@ CI ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) needs **no secret
 | generator | `generator:check`: scaffolds a module into the demo, runs typecheck, lint, unit tests, pgTAP and its e2e spec, then removes it |
 
 Vercel deploys separately through its GitHub integration, so CI never needs your Supabase or Daraja keys.
+
+### Docs site
+
+The static docs and landing site ([`apps/site`](../apps/site/README.md)) is published at [kitto.madebyfavor.com](https://kitto.madebyfavor.com) by [`.github/workflows/pages.yml`](../.github/workflows/pages.yml). On pull requests that touch the site or the docs, it builds the site and runs its Playwright smoke and axe tests. On pushes to `main`, it also deploys to GitHub Pages. Set the repository's **Settings → Pages → Source** to **GitHub Actions** and point a DNS `CNAME` record for `kitto.madebyfavor.com` at `<owner>.github.io`. Run it locally with `pnpm --filter @kitto/site dev`.

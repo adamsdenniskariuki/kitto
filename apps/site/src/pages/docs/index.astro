@@ -1,0 +1,30 @@
+---
+import Base from '../../layouts/Base.astro';
+import { DOCS, docRoute } from '../../lib/docs';
+---
+
+<Base
+  title="Kitto docs"
+  description="Kitto documentation: overview, setup, tutorial, architecture and learning notes."
+>
+  <div class="shell docs-index">
+    <p class="eyebrow">Documentation</p>
+    <h1>Kitto docs</h1>
+    <p>
+      These pages are rendered from the Markdown in the repository, so they always match the code.
+      Start with the overview, then follow the tutorial to build a small garage app in an hour.
+    </p>
+    <ul class="card-grid">
+      {
+        DOCS.map((doc) => (
+          <li class="card">
+            <a class="stretched" href={docRoute(doc.slug)}>
+              {doc.navTitle}
+            </a>
+            <p>{doc.description}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</Base>

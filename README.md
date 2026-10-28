@@ -61,6 +61,7 @@ packages/
   ...              one package per module (see docs/ARCHITECTURE.md)
 tools/             create-kitto-module generator
 apps/demo          example app using every module
+apps/site          static docs and landing site (kitto.madebyfavor.com)
 docs/              architecture, setup, tutorial (LEARNING.md at the root)
 scripts/           sync-sql, gen-types
 ```
@@ -126,8 +127,11 @@ CI (GitHub Actions) runs these as the `check`, `db`, `e2e` and `generator` jobs.
 
 ## Documentation
 
+The docs are also published, with rendered diagrams, at **[kitto.madebyfavor.com](https://kitto.madebyfavor.com)**.
+
 - [docs/SETUP.md](docs/SETUP.md): local development, path or subdomain tenant URLs, Supabase cloud, Vercel, M-Pesa (Daraja), environment variables.
 - [docs/TUTORIAL.md](docs/TUTORIAL.md): build "Kitto Garage", a small dealership and workshop, in an hour; plus how a hotel app maps onto the modules.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): system and request diagrams, data model, tenancy, roles, every module's design.
 - [LEARNING.md](LEARNING.md): the notable SQL and TypeScript techniques used, with real snippets.
 - [apps/demo/README.md](apps/demo/README.md): the demo app and how modules are mounted.
+- [apps/site/README.md](apps/site/README.md): the docs site, how it renders these files, and its demo screenshots.

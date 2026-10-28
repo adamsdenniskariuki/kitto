@@ -1,0 +1,17 @@
+---
+interface Props {
+  class?: string;
+}
+const { class: className = 'brand-mark' } = Astro.props;
+---
+
+<svg class={className} viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+  <rect class="logo-tile" x="1" y="1" width="118" height="118" rx="27"></rect>
+  <rect class="logo-a" x="26" y="24" width="20" height="72" rx="5"></rect>
+  <rect class="logo-b" x="50" y="36" width="44" height="18" rx="5" transform="rotate(-38 72 45)"
+  ></rect>
+  <rect class="logo-c" x="50" y="68" width="44" height="18" rx="5" transform="rotate(38 72 77)"
+  ></rect>
+  <rect class="logo-d" x="80" y="18" width="16" height="16" rx="4" transform="rotate(18 88 26)"
+  ></rect>
+</svg>

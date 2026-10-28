@@ -1,0 +1,328 @@
+---
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import Logo from '../components/Logo.astro';
+import Base from '../layouts/Base.astro';
+import { MODULES, SCREENSHOTS, USE_CASES } from '../lib/content';
+import { DOCS, docRoute } from '../lib/docs';
+import { REPO_URL } from '../lib/links';
+
+const foundation = MODULES.filter((m) => m.foundation);
+const business = MODULES.filter((m) => !m.foundation);
+const short = (name: string) => name.replace('@kitto/', '');
+const screenshots = SCREENSHOTS.filter((s) =>
+  existsSync(join(process.cwd(), 'public', 'screenshots', s.file)),
+);
+---
+
+<Base
+  title="Kitto: a framework for multi-tenant business apps"
+  description="Kitto is an open-source framework for multi-tenant business apps on Next.js and Supabase: tenants, roles, customers, bookings, billing, M-Pesa, stock, orders and reports, ready to compose."
+>
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="shell hero-grid">
+      <div>
+        <p class="eyebrow">Open-source business app framework</p>
+        <h1 id="hero-title">Business apps, built from <em>blocks</em>.</h1>
+        <p class="hero-lede">
+          Kitto (kit + to) packages what every business app needs, such as tenants, staff roles,
+          customers, bookings, billing, M-Pesa, stock and orders, so a hotel system or a car
+          dealership is mostly configuration and a few screens. Built on Next.js, strict TypeScript
+          and Supabase, with tenant isolation enforced in Postgres.
+        </p>
+        <div class="hero-actions">
+          <a class="button" href="/docs/overview/">Read the docs</a>
+          <a class="button secondary" href={REPO_URL}>View on GitHub</a>
+          <span class="badge">Live demo: coming soon</span>
+        </div>
+        <ul class="hero-points" aria-label="At a glance">
+          <li>11 modules</li>
+          <li>Row Level Security on every table</li>
+          <li>WCAG AA, mobile first</li>
+        </ul>
+      </div>
+      <div class="blocks" aria-hidden="true">
+        <span class="tile tone-a">core</span>
+        <span class="tile tone-a">auth</span>
+        <span class="tile tone-a">ui</span>
+        <span class="tile tone-b">booking</span>
+        <span class="tile"><Logo class="" /></span>
+        <span class="tile tone-b">billing</span>
+        <span class="tile tone-c">orders</span>
+        <span class="tile tone-d">inventory</span>
+        <span class="tile blank">yours</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="use-cases" class="section alt" aria-labelledby="use-cases-title">
+    <div class="shell">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Use cases</p>
+          <h2 id="use-cases-title">One framework, many businesses</h2>
+        </div>
+        <p>
+          The modules are generic on purpose. A room, a service bay and a test-drive car are all
+          bookable resources; a bar tab and a parts sale are both orders. Here is how three apps map
+          onto them.
+        </p>
+      </div>
+      <ul class="card-grid">
+        {
+          USE_CASES.map((useCase) => (
+            <li class="card">
+              <span class={`icon tone-${useCase.tone}`} aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="8" height="8" rx="2" />
+                  <rect x="13" y="3" width="8" height="8" rx="2" />
+                  <rect x="3" y="13" width="8" height="8" rx="2" />
+                  <rect x="13" y="13" width="8" height="8" rx="2" />
+                </svg>
+              </span>
+              <h3>{useCase.title}</h3>
+              <p>{useCase.summary}</p>
+              <dl class="mapping">
+                {useCase.maps.map((m) => (
+                  <div>
+                    <dt>{m.need}</dt>
+                    <dd>{m.module}</dd>
+                  </div>
+                ))}
+              </dl>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="section-foot">
+        See <a href="/docs/tutorial/#next-steps-a-hotel-a-dealership">how a hotel and a dealership map
+        onto Kitto</a>, or build the garage in the <a href="/docs/tutorial/">one-hour tutorial</a>.
+      </p>
+    </div>
+  </section>
+
+  <section id="modules" class="section" aria-labelledby="modules-title">
+    <div class="shell">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Modules</p>
+          <h2 id="modules-title">Eleven packages, two kinds</h2>
+        </div>
+        <p>
+          Every app gets the foundation. Business modules are opt-in, each with its own migrations,
+          RLS policies, permissions, typed data access, Zod schemas, UI and tests.
+        </p>
+      </div>
+      <h3 class="group-title">Foundation: in every app</h3>
+      <ul class="card-grid modules">
+        {
+          foundation.map((m) => (
+            <li class="card module-card">
+              <header>
+                <h4>{m.name}</h4>
+                <span class="kind tone-a">Foundation</span>
+              </header>
+              <p>{m.summary}</p>
+              {m.permissions.length > 0 && (
+                <p class="perms">
+                  Permissions:{' '}
+                  {m.permissions.map((p, i) => (
+                    <>
+                      {i > 0 && ', '}
+                      <code>{p}</code>
+                    </>
+                  ))}
+                </p>
+              )}
+            </li>
+          ))
+        }
+      </ul>
+      <h3 class="group-title">Business modules: opt in</h3>
+      <ul class="card-grid modules">
+        {
+          business.map((m) => (
+            <li class="card module-card">
+              <header>
+                <h4>{m.name}</h4>
+                <span class="kind tone-b">Opt-in</span>
+              </header>
+              <p>{m.summary}</p>
+              <p class="perms">
+                Permissions:{' '}
+                {m.permissions.map((p, i) => (
+                  <>
+                    {i > 0 && ', '}
+                    <code>{p}</code>
+                  </>
+                ))}
+              </p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  <section id="generator" class="section alt" aria-labelledby="generator-title">
+    <div class="shell split">
+      <div>
+        <p class="eyebrow">Module generator</p>
+        <h2 id="generator-title" class="section-title">Need something new? Generate it.</h2>
+        <p class="lede">
+          <code>create-kitto-module</code> scaffolds a module the same shape as
+          <code>@kitto/customers</code>, so it passes the same CI as the hand-written ones.
+        </p>
+        <ul class="ticks">
+          <li>A tenant-scoped table with RLS, permissions, audit and column grants</li>
+          <li>A pgTAP test proving tenant isolation and the permission matrix</li>
+          <li>Zod schemas, typed data access, server actions, list, new and detail pages</li>
+          <li>With <code>--app</code>: routes, nav entry, dependency and a Playwright spec</li>
+        </ul>
+      </div>
+      <div>
+        <pre
+          class="terminal"
+          tabindex="0"
+          aria-label="Generator commands"><code><span class="prompt">$ </span>pnpm create-kitto-module vehicles \
+    --fields "make:text! model:text! year:int price:money notes:longtext" \
+    --app apps/demo
+<span class="prompt">$ </span>pnpm install &amp;&amp; pnpm db:sync &amp;&amp; pnpm db:reset &amp;&amp; pnpm db:types
+<span class="comment"># or pass --apply; preview the files first with --dry-run</span></code></pre>
+        <p class="note">
+          Field types: <code>text</code>, <code>longtext</code>, <code>int</code>, <code
+            >numeric</code
+          >, <code>money</code>, <code>bool</code>, <code>date</code>; add <code>!</code> for required.
+          See the <a href={`${REPO_URL}/blob/main/tools/create-kitto-module/README.md`}
+            >generator README</a
+          >.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture" class="section" aria-labelledby="architecture-title">
+    <div class="shell split">
+      <div>
+        <p class="eyebrow">Architecture</p>
+        <h2 id="architecture-title" class="section-title">The rules live in the database</h2>
+        <p class="lede">
+          Apps stay thin: server components and server actions call typed data functions with the
+          signed-in user's Supabase client. Tenancy, permissions, double-booking, numbering, stock
+          and payment rules are SQL constraints, RLS policies, triggers and functions, so every
+          client gets the same guarantees.
+        </p>
+        <ul class="ticks">
+          <li>Every tenant table has <code>tenant_id</code> and RLS driven by <code>has_permission</code></li>
+          <li>Roles are data: seven defaults per tenant, and tenants can add their own</li>
+          <li>One generic trigger audits who changed what, with before and after values</li>
+        </ul>
+        <p class="section-foot">
+          <a href="/docs/architecture/">Read the architecture</a>, with system, request and data
+          model diagrams.
+        </p>
+      </div>
+      <figure class="stack" aria-labelledby="stack-caption">
+        <div class="layer tone-c">
+          <h3>Your apps</h3>
+          <ul>
+            <li>Hotel</li>
+            <li>Car dealership</li>
+            <li>Garage</li>
+            <li>apps/demo</li>
+          </ul>
+        </div>
+        <span class="arrow" aria-hidden="true">▼ opt in</span>
+        <div class="layer tone-b">
+          <h3>Business modules</h3>
+          <ul>{business.map((m) => <li>{short(m.name)}</li>)}</ul>
+        </div>
+        <span class="arrow" aria-hidden="true">▼ always</span>
+        <div class="layer tone-a">
+          <h3>Foundation</h3>
+          <ul>{foundation.map((m) => <li>{short(m.name)}</li>)}</ul>
+        </div>
+        <span class="arrow" aria-hidden="true">▼ user's JWT</span>
+        <div class="layer tone-d">
+          <h3>Supabase</h3>
+          <p>Postgres with RLS, triggers and functions · Auth · Realtime</p>
+        </div>
+        <figcaption id="stack-caption">
+          Architecture: apps compose the foundation (core, auth, ui, admin) with opt-in business
+          modules; every query runs as the signed-in user against Supabase Postgres under Row Level
+          Security.
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  {
+    screenshots.length > 0 && (
+      <section id="screenshots" class="section alt" aria-labelledby="screenshots-title">
+        <div class="shell">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Screenshots</p>
+              <h2 id="screenshots-title">The demo app, with sample data</h2>
+            </div>
+            <p>
+              Captured from <code>apps/demo</code> running locally after pressing
+              <strong>Load sample data</strong>, which sets up a small hotel.
+            </p>
+          </div>
+          <ul class="gallery">
+            {screenshots.map((s) => (
+              <li>
+                <figure>
+                  <img
+                    src={`/screenshots/${s.file}`}
+                    alt={s.alt}
+                    width="1280"
+                    height="800"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <figcaption>
+                    <strong>{s.title}</strong>
+                  </figcaption>
+                </figure>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    )
+  }
+
+  <section id="get-started" class="section" aria-labelledby="get-started-title">
+    <div class="shell split">
+      <div>
+        <p class="eyebrow">Get started</p>
+        <h2 id="get-started-title" class="section-title">Run it locally in minutes</h2>
+        <p class="lede">
+          You need Node 22, pnpm 10 and Docker for the local Supabase stack. Sign in with any email
+          (it lands in Mailpit), create a workspace and press <strong>Load sample data</strong>.
+        </p>
+        <pre
+          class="terminal"
+          tabindex="0"
+          aria-label="Quick start commands"><code><span class="prompt">$ </span>pnpm install
+<span class="prompt">$ </span>pnpm db:start
+<span class="prompt">$ </span>cp .env.example apps/demo/.env.local
+<span class="prompt">$ </span>pnpm --filter @kitto/demo dev</code></pre>
+      </div>
+      <ul class="card-grid docs-cards">
+        {
+          DOCS.map((doc) => (
+            <li class="card">
+              <a class="stretched" href={docRoute(doc.slug)}>
+                {doc.navTitle}
+              </a>
+              <p>{doc.description}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+</Base>

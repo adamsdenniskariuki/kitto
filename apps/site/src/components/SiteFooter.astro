@@ -1,0 +1,31 @@
+---
+import Logo from './Logo.astro';
+import { DOCS, docRoute } from '../lib/docs';
+import { REPO_URL } from '../lib/links';
+---
+
+<footer class="site-footer">
+  <div class="shell footer-inner">
+    <div>
+      <p class="made-by">
+        <Logo class="" />
+        <span>
+          Kitto is made by <a href="https://madebyfavor.com">Made by Favor</a>.
+        </span>
+      </p>
+    </div>
+    <nav aria-label="Footer">
+      <ul>
+        {
+          DOCS.map((doc) => (
+            <li>
+              <a href={docRoute(doc.slug)}>{doc.navTitle}</a>
+            </li>
+          ))
+        }
+        <li><a href={REPO_URL}>GitHub</a></li>
+        <li><a href="https://madebyfavor.com">madebyfavor.com</a></li>
+      </ul>
+    </nav>
+  </div>
+</footer>
